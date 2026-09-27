@@ -22,6 +22,8 @@ class FileMateApp : Application() {
     val monitor = MutableStateFlow(MonitorState())
     val checking = MutableStateFlow(false)
     val cleanup = MutableStateFlow(CleanupProgress())
+    val gallery = MutableStateFlow(GalleryProgress())
+    private val galleryLock = Mutex()
     private val scanLock = Mutex()
     override fun onCreate() {
         super.onCreate(); store = Store(this)
@@ -34,6 +36,29 @@ class FileMateApp : Application() {
         }
     }
     fun changed() { revision.update { it + 1 } }
+    fun refreshGallery() {
+        gallery.value = GalleryProgress(running = true)
+        scope.launch {
+            galleryLock.withLock {
+                gallery.value = GalleryProgress(running = true)
+                try {
+                    val access = MediaAccess.read(this@FileMateApp)
+                    if(!access.any) {
+                        store.hideUnavailableMedia()
+                        gallery.value = GalleryProgress(message = "Choose photo and video access to browse Gallery. Your saved project assignments are kept.")
+                    } else {
+                        val items = GalleryScanner(this@FileMateApp).scan(access)
+                        store.saveMediaSnapshot(items)
+                        gallery.value = GalleryProgress(ready = true)
+                    }
+                } catch(e: Exception) {
+                    store.hideUnavailableMedia()
+                    gallery.value = GalleryProgress(message = e.message ?: "Gallery could not refresh. Your saved assignments are kept.")
+                } finally { changed() }
+            }
+        }
+    }
+
     // First proof: these locations only. Gallery and user-selected roots follow in later milestones.
     @Suppress("DEPRECATION")
     fun roots(): List<File> = listOf(

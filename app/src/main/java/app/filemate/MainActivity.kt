@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun FileMate(app: FileMateApp, activity: MainActivity) {
     var page by rememberSaveable { mutableStateOf("AI Hub") }
+    var galleryProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var editingProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showProjectEditor by rememberSaveable { mutableStateOf(false) }
@@ -104,6 +105,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val projectFiles by produceState(emptyList<DetectedFile>(),revision,selectedProjectId) {
         value = selectedProjectId?.let { withContext(Dispatchers.IO) { app.store.projectFiles(it) } }.orEmpty()
     }
+    val projectMediaCount by produceState(0,revision,selectedProjectId) { value = selectedProjectId?.let { withContext(Dispatchers.IO) { app.store.galleryProjectCount(it) } } ?: 0 }
     val cleanupSummary by produceState<CleanupSummary?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.cleanupSummary() } }
     val cleanupEntries by produceState(emptyList<CleanupEntry>(),revision,cleanupFlag) { value = withContext(Dispatchers.IO) { app.store.cleanupEntries(cleanupFlag) } }
     val selectedFolders by produceState(emptyList<SelectedFolder>(),revision) { value = withContext(Dispatchers.IO) { app.store.selectedFolders() } }
@@ -163,7 +165,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     LaunchedEffect(monitor.error) { if(monitor.error != null) { pendingId = null;pendingPackage = null;error = monitor.error } }
     BackHandler(page != "AI Hub") {
         if(page == "Project detail" || page == "Needs Sorting") { page = "Projects";selectedProjectId = null }
-        else if(page == "Cleanup list") page = "Phone"
+        else if(page == "Cleanup list" || page == "Gallery") page = "Phone"
         else page = "AI Hub"
     }
     Scaffold(
@@ -172,13 +174,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2D",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 3A",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFF3F7FD)) {
                 listOf("AI Hub" to Icons.Outlined.Apps,"Projects" to Icons.Outlined.Folder,"Phone" to Icons.Outlined.PhoneAndroid,"Activity" to Icons.Outlined.History,"Setup" to Icons.Outlined.Tune).forEach { (label,icon) ->
-                    NavigationBarItem(selected = page == label || ((page == "Add apps" || page == "Recent") && label == "AI Hub") || ((page == "Project detail" || page == "Needs Sorting") && label == "Projects") || (page == "Cleanup list" && label == "Phone"),onClick = {
+                    NavigationBarItem(selected = page == label || ((page == "Add apps" || page == "Recent") && label == "AI Hub") || ((page == "Project detail" || page == "Needs Sorting") && label == "Projects") || ((page == "Cleanup list" || page == "Gallery") && label == "Phone"),onClick = {
                         page = label
                         if(label == "Projects") selectedProjectId = null
                     },icon = { Icon(icon,null) },label = { Text(label,fontSize = 10.sp) })
@@ -188,6 +190,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     ) { padding ->
         when(page) {
             "Add apps" -> AppPicker(app,hub,Modifier.padding(padding)) { page = "AI Hub" }
+            "Gallery" -> GalleryScreen(app,resumed,galleryProjectId,Modifier.padding(padding)) { page = "Phone" }
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding = PaddingValues(22.dp,12.dp,22.dp,24.dp),verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when(page) {
                     "AI Hub" -> {
@@ -282,8 +285,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
-                            if(projectFiles.isEmpty()) item {
-                                InfoCard("No files assigned", "Use Needs Sorting to add one file or a batch.",Icons.Outlined.DriveFileMove) {}
+                            if(projectMediaCount > 0) item { ActionRow("Project Gallery","$projectMediaCount indexed photos or videos · access may limit what is visible",Icons.Outlined.PhotoLibrary) { galleryProjectId = selectedProject.id;page = "Gallery" } }
+                            if(projectFiles.isEmpty() && projectMediaCount == 0) item {
+                                InfoCard("No files assigned", "Assign files in Needs Sorting or photos and videos in Gallery.",Icons.Outlined.DriveFileMove) {}
                             }
                             items(projectFiles,key = { it.path }) { file ->
                                 FileRow(file) { detail = file }
@@ -319,6 +323,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         }
                     }
                     "Phone" -> {
+                        item { ActionRow("Gallery","Browse local photos, screenshots and videos",Icons.Outlined.PhotoLibrary) { galleryProjectId = null;page = "Gallery" } }
                         item { Title("Clean Up My Phone", "Scan first. You choose every change.") }
                         item { Text("The scan reads shared-file metadata and hashes only same-size duplicate candidates. It does not move, rename or delete anything.",fontSize = 13.sp,color = Muted) }
                         if(!filesAllowed) item {
@@ -779,7 +784,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     }
 }
 private fun time(timestamp: Long): String = DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(timestamp))
-private fun formatBytes(bytes: Long): String {
+internal fun formatBytes(bytes: Long): String {
     if(bytes < 1024) return "$bytes B"
     val units = arrayOf("KB","MB","GB","TB")
     var value = bytes.toDouble()

@@ -1,0 +1,51 @@
+name: FileMate Gallery Android proof
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/android-gallery-proof.yml
+      - tools/verify-gallery-emulator.sh
+      - app/src/debug/**
+      - tools/generate-gallery-fixtures.py
+      - tools/fixtures/**
+      - app/src/main/java/app/filemate/Gallery*.kt
+      - app/src/main/java/app/filemate/Store.kt
+      - app/src/main/java/app/filemate/FileMateApp.kt
+      - app/src/main/AndroidManifest.xml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: filemate-gallery-android-proof
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Enable hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+      - name: Verify read-only Gallery with disposable media
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          emulator-boot-timeout: 600
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash tools/verify-gallery-emulator.sh

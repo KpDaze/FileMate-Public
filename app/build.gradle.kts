@@ -10,8 +10,8 @@ android {
         applicationId = "app.filemate"
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.2.0-stage2d"
+        versionCode = 4
+        versionName = "0.3.0-stage3a"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }

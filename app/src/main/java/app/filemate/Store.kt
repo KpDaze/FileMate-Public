@@ -15,7 +15,7 @@ data class HistoryItem(val title: String, val detail: String, val time: Long)
 data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
     val fileCount: Int)
 
-class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4) {
+class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 5) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -30,6 +30,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
         db.execSQL("CREATE TABLE state(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         createCleanupTables(db)
         createFileActionTable(db)
+        createGalleryTables(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         db.beginTransaction()
@@ -42,6 +43,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
             }
             if(old < 3) createCleanupTables(db)
             if(old < 4) createFileActionTable(db)
+            if(old < 5) createGalleryTables(db)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -85,7 +87,9 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
         while(c.moveToNext()) add(detectedFile(c))
     } }
     @Synchronized fun projects(): List<Project> = readableDatabase.rawQuery("""
-        SELECT p.id,p.name,p.created,p.updated,COUNT(f.path)
+        SELECT p.id,p.name,p.created,p.updated,COUNT(f.path) +
+            (SELECT COUNT(*) FROM media m WHERE m.project_id=p.id AND m.available=1 AND NOT EXISTS
+                (SELECT 1 FROM files linked WHERE linked.path=m.current_path AND linked.project_id=p.id))
         FROM projects p LEFT JOIN files f ON f.project_id=p.id
         GROUP BY p.id ORDER BY p.updated DESC,p.name COLLATE NOCASE
     """.trimIndent(),null).use { c -> buildList {
@@ -100,7 +104,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
         JOIN projects p ON p.id=f.project_id
         LEFT JOIN observations o ON o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=f.path)
         LEFT JOIN cleanup_entries c ON c.path=f.path
-        WHERE f.project_id=?
+        WHERE f.project_id=? AND NOT EXISTS (SELECT 1 FROM media m WHERE m.current_path=f.path AND m.available=1)
         ORDER BY COALESCE(o.detected,c.modified,f.modified) DESC
     """.trimIndent(),arrayOf(projectId.toString())).use { c -> buildList {
         while(c.moveToNext()) add(detectedFile(c))
@@ -145,6 +149,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
             }
             db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE root='Downloads' AND path IN (SELECT path FROM files WHERE project_id=?)",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,id))
             db.update("files",ContentValues().apply { put("project_confidence","Unassigned") },"project_id=?",arrayOf(id.toString()))
+            db.execSQL("UPDATE media SET project_confidence='Unassigned' WHERE project_id=?",arrayOf(id))
             db.delete("projects","id=?",arrayOf(id.toString()))
             refreshCleanupCounts(db)
             val detail = if(project.second == 0) project.first else "${project.first}. ${project.second} files returned to Needs Sorting."
@@ -177,6 +182,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
                         updated = 1
                     }
                 }
+                if(updated > 0) db.update("media",values,"current_path=? AND available=1",arrayOf(path))
                 changed += updated
             }
             require(changed > 0) { "The selected files are no longer available" }
@@ -199,6 +205,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
                 changed += db.update("files",ContentValues().apply {
                     putNull("project_id");put("project_confidence","Unassigned")
                 },"path=? AND project_id IS NOT NULL",arrayOf(path))
+                db.execSQL("UPDATE media SET project_id=NULL,project_confidence='Unassigned' WHERE current_path=? AND available=1",arrayOf(path))
                 db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE path=? AND root='Downloads'",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,path))
             }
             require(changed > 0) { "The selected files were already unassigned" }
@@ -290,6 +297,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
                 if(action.projectId == null) { putNull("project_id");put("project_confidence","Unassigned") }
                 else { put("project_id",action.projectId);put("project_confidence","Confirmed") }
             })
+            db.execSQL("UPDATE media SET available=0 WHERE current_path=?",arrayOf(action.sourcePath))
             db.update("observations",ContentValues().apply { put("path",action.targetPath);put("name",action.targetName) },"path=?",arrayOf(action.sourcePath))
             db.delete("cleanup_entries","path=?",arrayOf(action.targetPath))
             db.execSQL("UPDATE cleanup_entries SET path=?,name=?,root='Documents',flags=flags & ? WHERE path=?",arrayOf(action.targetPath,action.targetName,CleanupFlags.UNSORTED_DOWNLOAD.inv(),action.sourcePath))
@@ -312,6 +320,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
                 if(action.previousProjectId == null) { putNull("project_id");put("project_confidence","Unassigned") }
                 else { put("project_id",action.previousProjectId);put("project_confidence",action.previousProjectConfidence) }
             })
+            db.execSQL("UPDATE media SET available=0 WHERE current_path=?",arrayOf(action.targetPath))
             db.update("observations",ContentValues().apply { put("path",action.sourcePath);put("name",action.sourceName) },"path=?",arrayOf(action.targetPath))
             db.delete("cleanup_entries","path=?",arrayOf(action.sourcePath))
             db.execSQL("UPDATE cleanup_entries SET path=?,name=?,root=? WHERE path=?",arrayOf(action.sourcePath,action.sourceName,action.sourceRoot,action.targetPath))
@@ -403,7 +412,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
     private fun updateFileActionStatus(id: Long, status: String, message: String) {
         writableDatabase.update("file_actions",ContentValues().apply { put("status",status);put("error",message) },"id=?",arrayOf(id.toString()))
     }
-    private fun refreshCleanupCounts(db: SQLiteDatabase) {
+    internal fun refreshCleanupCounts(db: SQLiteDatabase) {
         val id = db.rawQuery("SELECT MAX(id) FROM cleanup_scans",null).use { if(it.moveToFirst() && !it.isNull(0)) it.getLong(0) else null } ?: return
         fun count(flag: Int) = db.rawQuery("SELECT COUNT(*) FROM cleanup_entries WHERE (flags & ?) != 0",arrayOf(flag.toString())).use { it.moveToFirst();it.getInt(0) }
         db.update("cleanup_scans",ContentValues().apply {
