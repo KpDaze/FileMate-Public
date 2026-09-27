@@ -64,6 +64,18 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 2
     """.trimIndent(),null).use { c ->
         buildList { while(c.moveToNext()) add(detectedFile(c)) }
     }
+    @Synchronized fun needsSorting(): List<DetectedFile> = readableDatabase.rawQuery("""
+        SELECT o.id,o.name,o.path,o.size,o.detected,o.source,o.confidence,o.reason,o.via,
+               f.project_id,p.name,f.project_confidence
+        FROM observations o
+        JOIN files f ON f.path=o.path
+        LEFT JOIN projects p ON p.id=f.project_id
+        WHERE f.project_id IS NULL
+          AND o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=o.path)
+        ORDER BY CASE o.confidence WHEN 'Low' THEN 0 WHEN 'Medium' THEN 1 ELSE 2 END,o.detected DESC
+    """.trimIndent(),null).use { c -> buildList {
+        while(c.moveToNext()) add(detectedFile(c))
+    } }
     @Synchronized fun projects(): List<Project> = readableDatabase.rawQuery("""
         SELECT p.id,p.name,p.created,p.updated,COUNT(f.path)
         FROM projects p LEFT JOIN files f ON f.project_id=p.id
@@ -124,6 +136,42 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 2
             db.delete("projects","id=?",arrayOf(id.toString()))
             val detail = if(project.second == 0) project.first else "${project.first}. ${project.second} files returned to Needs Sorting."
             insertHistory(db,"Project deleted",detail,System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun assignFiles(paths: Collection<String>, projectId: Long) {
+        val distinctPaths = paths.distinct()
+        require(distinctPaths.isNotEmpty()) { "Choose at least one file" }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val projectName = db.rawQuery("SELECT name FROM projects WHERE id=?",arrayOf(projectId.toString())).use {
+                if(it.moveToFirst()) it.getString(0) else throw IllegalArgumentException("Project no longer exists")
+            }
+            var changed = 0
+            val values = ContentValues().apply { put("project_id",projectId);put("project_confidence","Confirmed") }
+            distinctPaths.forEach { changed += db.update("files",values,"path=?",arrayOf(it)) }
+            require(changed > 0) { "The selected files are no longer available" }
+            val now = System.currentTimeMillis()
+            db.update("projects",ContentValues().apply { put("updated",now) },"id=?",arrayOf(projectId.toString()))
+            insertHistory(db,"Assigned to $projectName",if(changed == 1) "1 file" else "$changed files",now)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun unassignFiles(paths: Collection<String>) {
+        val distinctPaths = paths.distinct()
+        require(distinctPaths.isNotEmpty()) { "Choose at least one file" }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            var changed = 0
+            distinctPaths.forEach { path ->
+                changed += db.update("files",ContentValues().apply {
+                    putNull("project_id");put("project_confidence","Unassigned")
+                },"path=? AND project_id IS NOT NULL",arrayOf(path))
+            }
+            require(changed > 0) { "The selected files were already unassigned" }
+            insertHistory(db,"Returned to Needs Sorting",if(changed == 1) "1 file" else "$changed files",System.currentTimeMillis())
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }

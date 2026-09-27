@@ -75,6 +75,8 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     var editingProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showProjectEditor by rememberSaveable { mutableStateOf(false) }
     var deleteProject by remember { mutableStateOf<Project?>(null) }
+    var sortingSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var assignmentPaths by remember { mutableStateOf<List<String>>(emptyList()) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -90,6 +92,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val recent by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.recent() } }
     val history by produceState(emptyList<HistoryItem>(),revision) { value = withContext(Dispatchers.IO) { app.store.history() } }
     val projects by produceState(emptyList<Project>(),revision) { value = withContext(Dispatchers.IO) { app.store.projects() } }
+    val needsSorting by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.needsSorting() } }
     val selectedProject = projects.firstOrNull { it.id == selectedProjectId }
     val projectFiles by produceState(emptyList<DetectedFile>(),revision,selectedProjectId) {
         value = selectedProjectId?.let { withContext(Dispatchers.IO) { app.store.projectFiles(it) } }.orEmpty()
@@ -102,6 +105,10 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(activity,Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionTick++ }
+    LaunchedEffect(needsSorting) {
+        val available = needsSorting.mapTo(mutableSetOf()) { it.path }
+        sortingSelection = sortingSelection.intersect(available)
+    }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _,event ->
             if(event == Lifecycle.Event.ON_RESUME) {
@@ -135,7 +142,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     }
     LaunchedEffect(monitor.error) { if(monitor.error != null) { pendingId = null;pendingPackage = null;error = monitor.error } }
     BackHandler(page != "AI Hub") {
-        if(page == "Project detail") { page = "Projects";selectedProjectId = null }
+        if(page == "Project detail" || page == "Needs Sorting") { page = "Projects";selectedProjectId = null }
         else page = "AI Hub"
     }
     Scaffold(
@@ -144,13 +151,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2A",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2B",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFF3F7FD)) {
                 listOf("AI Hub" to Icons.Outlined.Apps,"Projects" to Icons.Outlined.Folder,"Recent" to Icons.Outlined.Schedule,"Activity" to Icons.Outlined.History,"Setup" to Icons.Outlined.Tune).forEach { (label,icon) ->
-                    NavigationBarItem(selected = page == label || (page == "Add apps" && label == "AI Hub") || (page == "Project detail" && label == "Projects"),onClick = {
+                    NavigationBarItem(selected = page == label || (page == "Add apps" && label == "AI Hub") || ((page == "Project detail" || page == "Needs Sorting") && label == "Projects"),onClick = {
                         page = label
                         if(label == "Projects") selectedProjectId = null
                     },icon = { Icon(icon,null) },label = { Text(label,fontSize = 10.sp) })
@@ -209,11 +216,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { Text(if(usageAllowed) "Stops after 30 minutes away from your selected AI apps." else "Without app activity access, sessions end 30 minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
+                        if(needsSorting.isNotEmpty()) item { ActionRow("Needs Sorting","${needsSorting.size} files need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         if(recent.isNotEmpty()) item { ActionRow("Recent detections","${recent.size} likely AI files · review source clues",Icons.Outlined.InsertDriveFile) { page = "Recent" } }
-                        item { Text("FileMate now keeps your own project list. File assignment arrives in Needs Sorting next.",color = Muted,fontSize = 12.sp) }
+                        item { Text("Project names and assignments stay in FileMate's local database. Files remain in their original locations.",color = Muted,fontSize = 12.sp) }
                     }
                     "Projects" -> {
                         item { Title("Projects", "Keep files together by what you're working on.") }
+                        item { ActionRow("Needs Sorting",if(needsSorting.isEmpty()) "Everything detected has a project" else "${needsSorting.size} files ready to review",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         item {
                             Button(onClick = { editingProjectId = null;showProjectEditor = true },modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Outlined.CreateNewFolder,null);Spacer(Modifier.width(8.dp));Text("Create project")
@@ -253,10 +262,38 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 }
                             }
                             if(projectFiles.isEmpty()) item {
-                                InfoCard("No files assigned", "Needs Sorting will let you add one file or a batch in Stage 2B.",Icons.Outlined.DriveFileMove) {}
+                                InfoCard("No files assigned", "Use Needs Sorting to add one file or a batch.",Icons.Outlined.DriveFileMove) {}
                             }
                             items(projectFiles,key = { it.path }) { file ->
                                 FileRow(file) { detail = file }
+                            }
+                        }
+                    }
+                    "Needs Sorting" -> {
+                        item { Title("Needs Sorting", "Choose the project. FileMate won't guess.") }
+                        item { Text("Source confidence describes where a file may have come from. Project assignment stays separate and becomes confirmed only when you choose it.",fontSize = 13.sp,color = Muted) }
+                        if(projects.isEmpty()) item {
+                            InfoCard("Create a project first", "You need somewhere to assign the selected files.",Icons.Outlined.CreateNewFolder) {
+                                TextButton(onClick = { editingProjectId = null;showProjectEditor = true }) { Text("Create project") }
+                            }
+                        }
+                        if(needsSorting.isEmpty()) item { InfoCard("Nothing waiting", "New uncertain or unassigned AI files will appear here.",Icons.Outlined.CheckCircle) {} }
+                        if(needsSorting.isNotEmpty()) item {
+                            Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
+                                Text("${sortingSelection.size} selected",fontWeight = FontWeight.SemiBold,modifier = Modifier.weight(1f))
+                                TextButton(onClick = { sortingSelection = if(sortingSelection.size == needsSorting.size) emptySet() else needsSorting.mapTo(mutableSetOf()) { it.path } }) {
+                                    Text(if(sortingSelection.size == needsSorting.size) "Clear" else "Select all")
+                                }
+                            }
+                        }
+                        items(needsSorting,key = { it.path }) { file ->
+                            FileRow(file,selected = file.path in sortingSelection) {
+                                sortingSelection = if(file.path in sortingSelection) sortingSelection - file.path else sortingSelection + file.path
+                            }
+                        }
+                        if(needsSorting.isNotEmpty()) item {
+                            Button(enabled = sortingSelection.isNotEmpty() && projects.isNotEmpty(),onClick = { assignmentPaths = sortingSelection.toList() },modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Outlined.DriveFileMove,null);Spacer(Modifier.width(8.dp));Text(if(sortingSelection.size == 1) "Assign file" else "Assign ${sortingSelection.size} files")
                             }
                         }
                     }
@@ -301,7 +338,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
-                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Projects are stored locally. No files are moved, renamed, uploaded or deleted in Stage 2A.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Projects and confirmed assignments are stored locally. No files are moved, renamed, uploaded or deleted in Stage 2B.",fontSize = 13.sp,color = Muted) }
                         item { Text("FileMate ${BuildConfig.VERSION_NAME} · Android 11 or newer",fontSize = 12.sp,color = Muted) }
                     }
                 }
@@ -313,11 +350,25 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("${file.source ?: "Unknown source"} · ${file.confidence} source confidence",fontWeight = FontWeight.SemiBold)
             Text(file.reason)
-            Text("Project: ${file.projectName ?: "Not assigned"}.\nOriginal name and location unchanged.")
+            Text(if(file.projectName == null) "Project: Not assigned." else "Project: ${file.projectName} · ${file.projectConfidence.lowercase()} by you.")
+            Text("Original name and location unchanged.")
             Text(file.path,fontSize = 12.sp)
             Text("${file.size} bytes · ${file.via}",fontSize = 12.sp,color = Muted)
         }
-    },confirmButton = { TextButton(onClick = { detail = null }) { Text("Done") } }) }
+    },dismissButton = {
+        if(file.projectId != null) TextButton(onClick = {
+            detail = null
+            uiScope.launch {
+                runCatching { withContext(Dispatchers.IO) { app.store.unassignFiles(listOf(file.path)) } }
+                    .onSuccess { app.changed() }
+                    .onFailure { error = "FileMate couldn't return this file to Needs Sorting." }
+            }
+        }) { Text("Needs Sorting") }
+    },confirmButton = { TextButton(onClick = {
+        detail = null
+        if(projects.isEmpty()) { editingProjectId = null;showProjectEditor = true }
+        else assignmentPaths = listOf(file.path)
+    }) { Text(if(file.projectId == null) "Assign" else "Change project") } }) }
     if(showProjectEditor) {
         val editing = projects.firstOrNull { it.id == editingProjectId }
         ProjectEditorDialog(editing,onDismiss = { showProjectEditor = false;editingProjectId = null }) { name ->
@@ -335,6 +386,15 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 }
             }
         }
+    }
+    if(assignmentPaths.isNotEmpty()) AssignmentDialog(projects,assignmentPaths.size,onDismiss = { assignmentPaths = emptyList() }) { projectId ->
+        try {
+            withContext(Dispatchers.IO) { app.store.assignFiles(assignmentPaths,projectId) }
+            sortingSelection = sortingSelection - assignmentPaths.toSet()
+            assignmentPaths = emptyList()
+            app.changed()
+            null
+        } catch(e: Exception) { e.message ?: "FileMate couldn't assign the selected files." }
     }
     deleteProject?.let { project -> AlertDialog(
         onDismissRequest = { deleteProject = null },
@@ -366,13 +426,15 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         Icon(icon,null,tint = Blue);Column(Modifier.weight(1f)) { Text(title,fontWeight = FontWeight.SemiBold);Text(subtitle,fontSize = 12.sp,color = Muted) };Icon(Icons.Outlined.ChevronRight,null)
     } }
 }
-@Composable private fun FileRow(file: DetectedFile, action: () -> Unit) {
+@Composable private fun FileRow(file: DetectedFile, selected: Boolean? = null, action: () -> Unit) {
     Card(onClick = action,colors = CardDefaults.cardColors(containerColor = Color.White),modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp),verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if(selected != null) Checkbox(checked = selected,onCheckedChange = { action() })
             Icon(Icons.Outlined.InsertDriveFile,null,tint = Blue)
             Column(Modifier.weight(1f)) {
                 Text(file.name,fontWeight = FontWeight.SemiBold,maxLines = 2,overflow = TextOverflow.Ellipsis)
                 Text("${file.source ?: "Unknown source"} · ${file.confidence.lowercase()} confidence",fontSize = 12.sp,color = Muted)
+                Text(file.projectName?.let { "$it · ${file.projectConfidence.lowercase()} project" } ?: "Project not assigned",fontSize = 12.sp,color = Muted)
                 Text("${file.via} · ${time(file.time)}",fontSize = 11.sp,color = Muted)
             }
             Icon(Icons.Outlined.ChevronRight,null,tint = Muted)
@@ -401,6 +463,38 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 if(message == null) onDismiss()
             }
         }) { Text(if(saving) "Saving…" else "Save") } }
+    )
+}
+@Composable private fun AssignmentDialog(projects: List<Project>, fileCount: Int, onDismiss: () -> Unit, assign: suspend (Long) -> String?) {
+    var selectedId by remember { mutableStateOf<Long?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if(!saving) onDismiss() },
+        title = { Text(if(fileCount == 1) "Choose a project" else "Assign $fileCount files") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("The files stay where they are. This saves only the project assignment.",fontSize = 13.sp,color = Muted)
+            LazyColumn(Modifier.heightIn(max = 330.dp)) {
+                items(projects,key = { it.id }) { project ->
+                    Row(Modifier.fillMaxWidth().clickable { selectedId = project.id;message = null }.padding(vertical = 9.dp),verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = selectedId == project.id,onClick = { selectedId = project.id;message = null })
+                        Text(project.name,modifier = Modifier.weight(1f),maxLines = 2,overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            message?.let { Text(it,color = MaterialTheme.colorScheme.error,fontSize = 12.sp) }
+        } },
+        dismissButton = { TextButton(enabled = !saving,onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(enabled = selectedId != null && !saving,onClick = {
+            val id = selectedId ?: return@Button
+            scope.launch {
+                saving = true
+                message = assign(id)
+                saving = false
+                if(message == null) onDismiss()
+            }
+        }) { Text(if(saving) "Assigning…" else "Assign") } }
     )
 }
 @Composable private fun PermissionCard(title: String, allowed: Boolean, description: String, button: String, action: () -> Unit) {
