@@ -1,31 +1,35 @@
-# Verification status — corrected runtime checks
+# Verification status
 
-The original Test 01 APK (0.1.0, version code 1) is **on hold**. Android 15 runtime testing on 25 September 2026 reproduced a Hub launch failure after monitoring started. Do not treat the original APK as an accepted device-tested build.
+## Corrected Test 01 proof
 
-The corrected 0.1.1 build has passed both Hub launches, background live detection, ordinary app switching, receipt exclusion, low-confidence handling, manual stop with notification removal, catch-up and repeated-open record deduplication on Android 15. Its eight JVM tests passed. The full 30-minute inactivity test was interrupted after 728 seconds when the execution/emulator control sessions became unavailable; its result is inconclusive. The timer boundary logic passed its JVM test. See [the exact runtime evidence and limits](RUNTIME-VERIFICATION.md).
+The original 0.1.0 APK is rejected. Android 15 runtime testing on 25 September 2026 reproduced a Hub launch failure after monitoring started.
 
-The earlier corrected emulator candidate used a disposable fixture signing key. Kel subsequently confirmed no FileMate APK had been installed, so a fresh first-install signing identity was generated, backed up and applied to the same compiled payload. Its certificate and recovery references are recorded in `signing-identity-2026-09-26.json`. The unsigned compiled payload has been saved as `FileMate-0.1.1-Build-Checkpoint.zip` so delivery does not depend on rebuilding. This checkpoint is not installable.
+The corrected 0.1.1 build passed two fixture launches, live background detection, ordinary app switching, receipt exclusion, low-confidence handling, manual stop, notification removal, catch-up and repeated-open deduplication on Android 15. The fixture run used synthetic local Qwen and ChatGPT exporters, not real provider accounts.
 
-# Test 01 verification
+[Public GitHub run 36285379397](https://github.com/KpDaze/FileMate-Public/actions/runs/36285379397) completed successfully on 27 September 2026. It used a standard public `ubuntu-latest` runner, KVM and Android 15/API 35. The run built the app, ran the JVM logic tests, installed FileMate, started its private monitoring service under the app identity, confirmed the session remained active at the at-least-29-minute check, then confirmed automatic stop, its Activity record and notification removal. The reported 1785 seconds starts after a 25-second setup delay; actual service life crossed the intended approximately 30-minute boundary. The production timeout and device clock were unchanged.
 
-The earlier build on 25 September 2026 compiled and passed all eight JVM logic tests. Its signed APK verified and its packaged entries matched the Gradle output. Android lint found zero errors, with a backup-configuration warning addressed in the current source.
+The public run did not select two real AI apps, use provider accounts, test real provider downloads, or prove physical-phone permission and battery behaviour. The earlier fixture run covers normal switching and live exports separately.
 
-Automatic workspace maintenance subsequently removed the temporary APK and signing key before their attempted durable save succeeded. The source checkpoint at commit 7779097570d232caf13330d26825e3f7375fb19e remained safe in GitHub. The source was restored and the final changes reapplied. No APK from the removed signing identity was delivered or installed; a new identity is used for the first delivered package. The replacement APK and its private signing backup have now both been saved successfully.
+## Physical phone
 
-## Emulator failure
+Kel installed the corrected 0.1.1 APK on 27 September 2026. Installation and the screens tried appeared to work. Kel left the later broad-access setup incomplete. The physical-phone result is therefore partial: installation/basic opening passed; shared file watching, real AI apps, switching, catch-up and the inactivity stop remain pending.
 
-An Android 15 emulator was attempted without hardware acceleration. Its Android startup never reached a confirmed completed boot. The package installer then failed in Android's own StorageManagerService: a PackageManagerInternal reference was null. This happened before FileMate was installed, so it was not a FileMate application crash. The exact cause of the emulator's failed startup was not established. Lack of hardware acceleration is a limitation of this environment, not a proven cause of that exception.
+## Stage 2A
 
-The emulator result does not count as a passed installation, UI or monitoring test. The emulator was stopped.
+Stage 2A adds local manual projects with create, rename, delete and browse screens. Database version 2 uses a non-destructive migration and retains the Hub, indexed files, observations, history and state from version 1. Project deletion leaves phone files untouched and clears their project assignment for future Needs Sorting.
 
-## Phone acceptance still required
+The Stage 2A source uses version `0.2.0-stage2a`, code 3. [Lightweight run 36289780572](https://github.com/KpDaze/FileMate-Public/actions/runs/36289780572) passed the JVM tests, Android lint and debug assembly on 27 September 2026. This source checkpoint is not yet a phone acceptance result or a signed personal update.
 
-PHONE-TEST.md covers installation, permissions, choosing two real installed AI apps, watcher readiness before launch, shared download detection, ignoring unrelated downloads, switching through Android Recent Apps, session survival, 30-minute inactivity stop and catch-up after interruption. None is claimed to be proven on a physical phone yet.
+## Artifact and signing boundary
 
-Test 01 leaves all shared files untouched. It is the first technical proof, not the finished Version 1. Project organisation, screenshots/OCR/duplicates, gallery, cleanup and optional Drive remain on the full roadmap.
+The corrected personal 0.1.1 APK has SHA-256 `e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1`. Its signature, certificate, 16 KB ZIP alignment and packaged entries were verified. Private signing and recovery records remain outside this public repository. Future phone APKs must use the same backed-up personal identity to update the installed copy.
 
-## Delivered Test 01 result
+`docs/test-01-artifact.json` describes the rejected 0.1.0 artifact and must not be treated as the corrected release record.
 
-Fresh rebuild: successful. Eight JVM tests passed, none failed. Android lint: zero errors, one advisory that a newer core-ktx is available; the pinned dependency was retained. Final APK signature and 16 KB ZIP alignment verified. Every packaged entry matches the Gradle output byte for byte. The merged manifest contains no INTERNET permission. See test-01-artifact.json for the exact package hash and signing-certificate fingerprint.
+## Historical failures retained as evidence
 
-This was the first delivered APK, about 8 MB. It is now superseded by the runtime failure noted above; do not install it for acceptance testing. No APK signed by the removed preliminary key was delivered.
+- Two early public workflow attempts failed in their harness before inactivity timing began: run `36284780316` tried to start a non-exported service as the shell; run `36285111279` omitted an explicit Android user while using FileMate's debug UID.
+- An earlier private run, `36227791658`, never received a runner because the private Actions allowance/billing blocked job startup.
+- Older software-only workspace emulators repeatedly failed during Android startup before FileMate installation. Those are environment failures, not FileMate timeout failures.
+
+See [runtime verification](RUNTIME-VERIFICATION.md) for the detailed chronology and its evidence limits.

@@ -1,4 +1,18 @@
-# Runtime verification — 25 September 2026
+# Runtime verification
+
+## Current result — 27 September 2026
+
+The corrected 0.1.1 proof has now passed the real production inactivity interval. [Public run 36285379397](https://github.com/KpDaze/FileMate-Public/actions/runs/36285379397) used a standard public `ubuntu-latest` runner, KVM and Android 15/API 35. Java/Gradle build and JVM tests passed, FileMate installed, its monitoring service recorded `session_active=true`, and it remained active at the at-least-29-minute check. It then stopped automatically; the harness verified the Activity entry and removal of the monitoring notification.
+
+The harness reports 1785 seconds after a separate 25-second setup delay, so actual service life crosses the intended approximately 30-minute boundary. It did not alter the device clock or shorten the production timeout. This successful public run supersedes the earlier interrupted inactivity attempts below while preserving them as historical evidence.
+
+The public run did not add two real provider apps through the picker, use provider accounts, test their downloads, or prove physical-phone permissions and battery behaviour. The earlier Android 15 fixture run separately covers ordinary Qwen → ChatGPT → Qwen switching and live MediaStore exports.
+
+Kel installed the corrected personal APK on a physical phone on 27 September. Installation and the screens tried appeared to work. The later broad-access setup was left incomplete, so the physical-phone acceptance gate remains partial.
+
+Private signing and recovery records are intentionally outside this public repository. The four private recovery files omitted from the public snapshot are not required to build the public source.
+
+## Earlier corrected-build verification — 25 September 2026
 
 ## Corrected build: 0.1.1-proof
 
@@ -28,8 +42,8 @@ Two synthetic installed apps, Qwen Test and ChatGPT Test, export actual files th
 | Catch a missed export | Off-session file did not appear live; reopening added it as Medium / Catch-up, count 4 → 5 |
 | Reopen without duplicate records | Count stayed 5 |
 | Preserve shared files | All six original filenames remain in Downloads/FileMateTests; content hashes match the original fixture exports |
-| Full 30-minute inactivity | **Inconclusive**: active at 728 seconds, then execution/emulator control sessions became unavailable. No altered clock or shortened timeout. |
-| Real providers / physical phone | Not yet tested |
+| Full 30-minute inactivity | **Earlier attempt inconclusive**: active at 728 seconds, then execution/emulator control sessions became unavailable. Superseded by public run 36285379397. |
+| Real providers / physical phone | Partial physical-phone check on 27 September; full provider/file test remains pending |
 
 [Corrected observations, history and check status](runtime-evidence/2026-09-25/corrected-results.json) are recorded from actual database snapshots. UI hierarchy captures and notification evidence are in the same directory. The original APK's isolated watcher results are recorded separately in [original-apk-results.json](runtime-evidence/2026-09-25/original-apk-results.json).
 
@@ -39,7 +53,7 @@ The installed `base.apk` SHA-256 was checked on the emulator and matches the cor
 
 ![Corrected native Recent view with live and catch-up detections](runtime-evidence/2026-09-25/corrected-recent-screen.png)
 
-The compiled unsigned payload has been saved as `FileMate-0.1.1-Build-Checkpoint.zip`. Its metadata lists every archive entry hash and the required original certificate fingerprint. It contains no private keys and is not installable. The replacement can be signed from that payload without recompiling, then checked against the tested entries.
+The compiled unsigned payload and its recovery metadata were saved privately. The payload contains no private keys and is not installable. It can be signed from the preserved payload without recompiling, then checked against the tested entries.
 
 ## Tested original artifact
 
@@ -75,7 +89,7 @@ Reference: Android's official [Compose side-effects documentation](https://devel
 
 The two fixtures are synthetic local exporters using actual MediaStore Downloads writes. They are not the real AI provider apps, and no physical-phone compatibility claim follows from these tests. No shared files are moved, renamed, uploaded or deleted by FileMate in Test 01.
 
-## Interrupted inactivity check
+## Earlier interrupted inactivity check — superseded
 
 The second corrected Hub launch opened ChatGPT Test. Pressing Android Home at device Unix time 1790350452 left the selected apps. Android usage events record the last selected Activity pause at 11:34:11 local device time. FileMate was briefly opened only to capture its Hub and Recent screens, then returned to Home; neither selected AI fixture was resumed. The production timeout remained 30 minutes.
 
@@ -85,9 +99,9 @@ The timer's boundary and reset policy passed its JVM test, but the full real int
 
 ## 26 September follow-up (Brisbane time)
 
-Kel confirmed no FileMate APK has been installed; only the browser preview has been used. The original-key delivery condition was therefore based on an incorrect assumption. A fresh first-install key is saved in `FileMate-Signing-Backup-2026-09-26.zip`; public recovery metadata is in `signing-identity-2026-09-26.json`. The actual download link was supplied, but Kel reported no application found when opening that ZIP on the phone, so phone download is not claimed.
+At that time, Kel confirmed no FileMate APK had been installed and only the browser preview had been used. The original-key delivery condition was therefore based on an incorrect assumption. A fresh first-install key and its recovery metadata were saved privately outside public Git. The backup download link did not open as an application on the phone, which was expected because the backup is not an APK.
 
-The newly signed corrected APK SHA-256 is `e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1`. Its signature, certificate and 16 KB ZIP alignment verified; all 74 entries match the previously tested corrected build. It remains an internal candidate pending the full timeout check.
+The newly signed corrected APK SHA-256 is `e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1`. Its signature, certificate and 16 KB ZIP alignment verified; all 74 entries match the previously tested corrected build. At that point it remained a candidate pending the full timeout check; the public run later completed that check.
 
 A new emulator attempt exited with signal 11 before Android readiness. No FileMate runtime result is claimed for that attempt. A retry is in progress using a separate virtual-device copy and a self-contained recorder. The production timeout is unchanged.
 
@@ -104,9 +118,9 @@ Workspace maintenance removed the earlier SDK and test device. Source, compiled 
 
 Fresh API 35 startup suffered system-service failures before app installation. The first API 30 attempt reached readiness at 993 seconds, but a queued restart interrupted setup before installation; that interruption must not be called an app failure. A single-core restart failed its 600-second readiness allowance. The final two-core retry failed its 1200-second allowance, with user/package services and shared Downloads unavailable in diagnostics. The full 30-minute app test never started in these retries. No new app-runtime pass is claimed.
 
-[Morning attempt summary](runtime-evidence/2026-09-26/morning-attempt-summary.json) and [final readiness result](runtime-evidence/2026-09-26/api30-final-result.json) preserve this boundary. The APK remains held for delivery. Hosted testing is only a proposal and requires explicit cost approval under the user's handover.
+[Morning attempt summary](runtime-evidence/2026-09-26/morning-attempt-summary.json) and [final readiness result](runtime-evidence/2026-09-26/api30-final-result.json) preserve this boundary. The APK was held at that point. The later public standard-runner test required no paid hosted-testing approval.
 
 
-## GitHub Android test attempt — 26 September, 17:46 Brisbane
+## Historical private GitHub attempt — 26 September, 17:46 Brisbane
 
-A bounded workflow and real-time timeout script were added at commits `9a57841e5c1451ab00447677f374b61752757a69` and `f27326246cf75233d17a123a948855ad668cf319`. The first workflow run ([36227791658](https://github.com/KpDaze/FileMate/actions/runs/36227791658)) failed in about three seconds before a runner was assigned: `runner_id=0`, `steps=[]`, no job logs. No build, emulator, or app test ran. The GitHub API does not expose the account-specific cause here; it may be runner provisioning, billing, or another account setting. Do not infer an app defect or claim this as an emulator result. Do not retry blindly. The full 30-minute inactivity result remains unverified.
+A bounded workflow and real-time timeout script were added at commits `9a57841e5c1451ab00447677f374b61752757a69` and `f27326246cf75233d17a123a948855ad668cf319`. The first private-repository workflow run ([36227791658](https://github.com/KpDaze/FileMate/actions/runs/36227791658)) failed in about three seconds before a runner was assigned: `runner_id=0`, `steps=[]`, no job logs. No build, emulator, or app test ran. This is not an app result. The later public-repository run completed the full interval successfully.
