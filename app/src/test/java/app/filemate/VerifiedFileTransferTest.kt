@@ -21,12 +21,13 @@ class VerifiedFileTransferTest {
     @Test fun normalMovePreservesFullContentAndModificationTime() {
         val bytes = ByteArray(200_000) { (it % 251).toByte() }
         val source = source(bytes)
-        assertTrue(source.setLastModified(1_600_000_000_000))
+        assertTrue(source.setLastModified(1_600_000_000_123))
+        assertEquals(source.lastModified(),requireNotNull(ContentFingerprint.read(source)).modified)
         val target = target()
         move(source,target)
         assertFalse(source.exists())
         assertArrayEquals(bytes,target.readBytes())
-        assertEquals(1_600_000_000_000,target.lastModified())
+        assertEquals(1_600_000_000_123,target.lastModified())
     }
 
     @Test fun zeroLengthFileIsFingerprintableAndMovable() {

@@ -11,7 +11,6 @@ import java.nio.file.StandardOpenOption.CREATE_NEW
 import java.nio.file.StandardOpenOption.READ
 import java.nio.file.StandardOpenOption.WRITE
 import java.nio.file.attribute.BasicFileAttributes
-import java.nio.file.attribute.FileTime
 import java.security.MessageDigest
 
 data class ContentFingerprint(val size: Long, val modified: Long, val hash: String) {
@@ -23,6 +22,9 @@ data class ContentFingerprint(val size: Long, val modified: Long, val hash: Stri
             val path = file.toPath()
             val before = Files.readAttributes(path,BasicFileAttributes::class.java,NOFOLLOW_LINKS)
             check(before.isRegularFile) { "Not a regular file" }
+            // Android NIO attributes can round to seconds while File.lastModified()
+            // (used by the scanner/journal) retains milliseconds. Compare like with like.
+            val modified = file.lastModified()
             val digest = MessageDigest.getInstance("SHA-256")
             var size = 0L
             Files.newInputStream(path,READ,NOFOLLOW_LINKS).use { input ->
@@ -39,10 +41,11 @@ data class ContentFingerprint(val size: Long, val modified: Long, val hash: Stri
             }
             val after = Files.readAttributes(path,BasicFileAttributes::class.java,NOFOLLOW_LINKS)
             check(after.isRegularFile && size == before.size() && size == after.size() &&
-                before.lastModifiedTime() == after.lastModifiedTime() && before.fileKey() == after.fileKey()) {
+                before.lastModifiedTime() == after.lastModifiedTime() && before.fileKey() == after.fileKey() &&
+                file.lastModified() == modified) {
                 "File changed while reading"
             }
-            return ContentFingerprint(size,after.lastModifiedTime().toMillis(),digest.digest().joinToString("") { "%02x".format(it) })
+            return ContentFingerprint(size,modified,digest.digest().joinToString("") { "%02x".format(it) })
         }
 
         fun matches(file: File, size: Long, hash: String?): Boolean {
@@ -94,7 +97,9 @@ class VerifiedFileTransfer internal constructor(
         if(!ContentFingerprint.matches(target,expectedSize,expectedHash)) {
             throw IOException("The new copy could not be verified. The source was kept; both paths need review.")
         }
-        Files.setLastModifiedTime(target.toPath(),FileTime.fromMillis(original.modified))
+        if(!target.setLastModified(original.modified)) {
+            throw IOException("The modification time could not be preserved. Both paths were kept for review.")
+        }
         if(ContentFingerprint.read(source) != original || !ContentFingerprint.matches(target,expectedSize,expectedHash)) {
             throw IOException("A file changed during the move. Both paths were kept for review.")
         }

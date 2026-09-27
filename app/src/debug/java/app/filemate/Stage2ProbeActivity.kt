@@ -22,6 +22,8 @@ class Stage2ProbeActivity : ComponentActivity() {
                 val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 testRoot = File(downloads,"FileMateStage2Probe-${System.currentTimeMillis()}").apply { check(mkdirs()) }
                 val first = File(testRoot,"same.txt").apply { writeText("FileMate stage two duplicate proof") }
+                check(first.setLastModified(1_600_000_000_123))
+                check(ContentFingerprint.readChecked(first).modified == first.lastModified())
                 val second = File(testRoot,"copy.txt").apply { writeText("FileMate stage two duplicate proof") }
 
                 val scan = CleanupScanner(contentResolver).scan(listOf("Downloads" to testRoot),emptyList(),emptySet(),emptySet()) {}
@@ -48,6 +50,7 @@ class Stage2ProbeActivity : ComponentActivity() {
                 val applied = FileOrganiser(app.store).apply(listOf(plan))
                 check(applied.applied == 1 && applied.failed == 0) { "Move result: $applied" }
                 check(!first.exists() && File(plan.targetPath).isFile)
+                check(File(plan.targetPath).lastModified() == plan.expectedModified)
                 check(conflict.readText() == "keep this existing file")
                 val action = app.store.fileActions().first { it.status == "applied" }
                 check(FileOrganiser(app.store).undo(action) == null)
@@ -56,7 +59,7 @@ class Stage2ProbeActivity : ComponentActivity() {
                 check(app.store.projectFiles(projectId).single().path == first.absolutePath)
 
                 verifySafeguards(app,testRoot,project,destination)
-                resultFile.writeText("""{"passed":true,"files":2,"duplicate_groups":1,"move":true,"undo":true,"conflict_preserved":true,"late_move_collision":true,"late_undo_collision":true,"unique_file_fingerprint":true,"same_size_edit_refused":true,"legacy_undo_refused":true,"interrupted_copy_preserved":true,"recovery_validated":true}""")
+                resultFile.writeText("""{"passed":true,"files":2,"duplicate_groups":1,"move":true,"undo":true,"conflict_preserved":true,"late_move_collision":true,"late_undo_collision":true,"unique_file_fingerprint":true,"same_size_edit_refused":true,"legacy_undo_refused":true,"interrupted_copy_preserved":true,"recovery_validated":true,"millisecond_timestamp_preserved":true}""")
                 second.delete()
                 first.delete()
                 conflict.delete()
