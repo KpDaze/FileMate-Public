@@ -34,3 +34,18 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+      - name: Prepare manual packaging files
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          mkdir stage2-package
+          cp app/build/outputs/apk/debug/app-debug.apk stage2-package/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" stage2-package/
+          printf '%s\n' "$GITHUB_SHA" > stage2-package/source-commit.txt
+      - name: Upload manual packaging files
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: filemate-stage2-source-package
+          path: stage2-package
+          retention-days: 1
+          if-no-files-found: error
