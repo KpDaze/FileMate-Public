@@ -43,4 +43,9 @@ class RulesTest {
         assertTrue(FileRules.changed(stamp,FileStamp(11,123)))
         assertTrue(FileRules.changed(stamp,FileStamp(10,124)))
     }
+    @Test fun projectNamesAreManualCleanAndBounded() {
+        assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
+        assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
+        assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("x".repeat(ProjectNames.MAX_LENGTH + 1)) }
+    }
 }

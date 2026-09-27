@@ -8,18 +8,39 @@ import java.io.File
 
 data class HubApp(val packageName: String, val label: String)
 data class DetectedFile(val id: Long, val name: String, val path: String, val size: Long,
-    val time: Long, val source: String?, val confidence: String, val reason: String, val via: String)
+    val time: Long, val source: String?, val confidence: String, val reason: String, val via: String,
+    val projectId: Long? = null, val projectName: String? = null,
+    val projectConfidence: String = "Unassigned")
 data class HistoryItem(val title: String, val detail: String, val time: Long)
+data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
+    val fileCount: Int)
 
-class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 1) {
+class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 2) {
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        db.setForeignKeyConstraintsEnabled(true)
+    }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE hub(package TEXT PRIMARY KEY,label TEXT NOT NULL)")
-        db.execSQL("CREATE TABLE files(path TEXT PRIMARY KEY,size INTEGER NOT NULL,modified INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE projects(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL COLLATE NOCASE UNIQUE,created INTEGER NOT NULL,updated INTEGER NOT NULL)")
+        db.execSQL("CREATE TABLE files(path TEXT PRIMARY KEY,size INTEGER NOT NULL,modified INTEGER NOT NULL,project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,project_confidence TEXT NOT NULL DEFAULT 'Unassigned')")
+        db.execSQL("CREATE INDEX files_project_id ON files(project_id)")
         db.execSQL("CREATE TABLE observations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,path TEXT NOT NULL,size INTEGER NOT NULL,detected INTEGER NOT NULL,source TEXT,confidence TEXT NOT NULL,reason TEXT NOT NULL,via TEXT NOT NULL)")
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT NOT NULL,detail TEXT NOT NULL,time INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE state(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
     }
-    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) { error("A non-destructive migration is required") }
+    override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
+        db.beginTransaction()
+        try {
+            if(old < 2) {
+                db.execSQL("CREATE TABLE projects(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL COLLATE NOCASE UNIQUE,created INTEGER NOT NULL,updated INTEGER NOT NULL)")
+                db.execSQL("ALTER TABLE files ADD COLUMN project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL")
+                db.execSQL("ALTER TABLE files ADD COLUMN project_confidence TEXT NOT NULL DEFAULT 'Unassigned'")
+                db.execSQL("CREATE INDEX files_project_id ON files(project_id)")
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
     @Synchronized fun hub(): List<HubApp> = readableDatabase.rawQuery("SELECT package,label FROM hub ORDER BY rowid", null).use { c ->
         buildList { while(c.moveToNext()) add(HubApp(c.getString(0),c.getString(1))) }
     }
@@ -33,8 +54,78 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 1
         put("title",title);put("detail",detail);put("time",System.currentTimeMillis())
     }) }
     @Synchronized fun history(): List<HistoryItem> = readableDatabase.rawQuery("SELECT title,detail,time FROM history ORDER BY id DESC LIMIT 200",null).use { c -> buildList { while(c.moveToNext()) add(HistoryItem(c.getString(0),c.getString(1),c.getLong(2))) } }
-    @Synchronized fun recent(): List<DetectedFile> = readableDatabase.rawQuery("SELECT id,name,path,size,detected,source,confidence,reason,via FROM observations ORDER BY id DESC LIMIT 200",null).use { c ->
-        buildList { while(c.moveToNext()) add(DetectedFile(c.getLong(0),c.getString(1),c.getString(2),c.getLong(3),c.getLong(4),c.getString(5),c.getString(6),c.getString(7),c.getString(8))) }
+    @Synchronized fun recent(): List<DetectedFile> = readableDatabase.rawQuery("""
+        SELECT o.id,o.name,o.path,o.size,o.detected,o.source,o.confidence,o.reason,o.via,
+               f.project_id,p.name,f.project_confidence
+        FROM observations o
+        LEFT JOIN files f ON f.path=o.path
+        LEFT JOIN projects p ON p.id=f.project_id
+        ORDER BY o.id DESC LIMIT 200
+    """.trimIndent(),null).use { c ->
+        buildList { while(c.moveToNext()) add(detectedFile(c)) }
+    }
+    @Synchronized fun projects(): List<Project> = readableDatabase.rawQuery("""
+        SELECT p.id,p.name,p.created,p.updated,COUNT(f.path)
+        FROM projects p LEFT JOIN files f ON f.project_id=p.id
+        GROUP BY p.id ORDER BY p.updated DESC,p.name COLLATE NOCASE
+    """.trimIndent(),null).use { c -> buildList {
+        while(c.moveToNext()) add(Project(c.getLong(0),c.getString(1),c.getLong(2),c.getLong(3),c.getInt(4)))
+    } }
+    @Synchronized fun projectFiles(projectId: Long): List<DetectedFile> = readableDatabase.rawQuery("""
+        SELECT o.id,o.name,o.path,o.size,o.detected,o.source,o.confidence,o.reason,o.via,
+               f.project_id,p.name,f.project_confidence
+        FROM observations o
+        JOIN files f ON f.path=o.path
+        JOIN projects p ON p.id=f.project_id
+        WHERE f.project_id=? AND o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=o.path)
+        ORDER BY o.detected DESC
+    """.trimIndent(),arrayOf(projectId.toString())).use { c -> buildList {
+        while(c.moveToNext()) add(detectedFile(c))
+    } }
+    @Synchronized fun createProject(rawName: String): Long {
+        val name = ProjectNames.clean(rawName)
+        val now = System.currentTimeMillis()
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val id = db.insertOrThrow("projects",null,ContentValues().apply {
+                put("name",name);put("created",now);put("updated",now)
+            })
+            insertHistory(db,"Project created",name,now)
+            db.setTransactionSuccessful()
+            return id
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun renameProject(id: Long, rawName: String) {
+        val name = ProjectNames.clean(rawName)
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val oldName = db.rawQuery("SELECT name FROM projects WHERE id=?",arrayOf(id.toString())).use {
+                if(it.moveToFirst()) it.getString(0) else throw IllegalArgumentException("Project no longer exists")
+            }
+            val now = System.currentTimeMillis()
+            db.update("projects",ContentValues().apply { put("name",name);put("updated",now) },"id=?",arrayOf(id.toString()))
+            insertHistory(db,"Project renamed","$oldName → $name",now)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun deleteProject(id: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val project = db.rawQuery("""
+                SELECT p.name,COUNT(f.path) FROM projects p LEFT JOIN files f ON f.project_id=p.id
+                WHERE p.id=? GROUP BY p.id
+            """.trimIndent(),arrayOf(id.toString())).use {
+                if(it.moveToFirst()) it.getString(0) to it.getInt(1) else throw IllegalArgumentException("Project no longer exists")
+            }
+            db.update("files",ContentValues().apply { put("project_confidence","Unassigned") },"project_id=?",arrayOf(id.toString()))
+            db.delete("projects","id=?",arrayOf(id.toString()))
+            val detail = if(project.second == 0) project.first else "${project.first}. ${project.second} files returned to Needs Sorting."
+            insertHistory(db,"Project deleted",detail,System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
     /** Deduplication and record insertion are one transaction; catch-up and live events may race. */
     @Synchronized fun observe(file: File, finding: Finding, via: String, baseline: Boolean = false): Boolean {
@@ -47,9 +138,11 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 1
                 if(it.moveToFirst()) FileStamp(it.getLong(0),it.getLong(1)) else null
             }
             if(!FileRules.changed(previous,stamp)) { db.setTransactionSuccessful();return false }
-            db.insertWithOnConflict("files",null,ContentValues().apply {
+            val values = ContentValues().apply {
                 put("path",file.absolutePath);put("size",stamp.size);put("modified",stamp.modified)
-            },SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            if(previous == null) db.insertOrThrow("files",null,values)
+            else db.update("files",values,"path=?",arrayOf(file.absolutePath))
             // Baseline must never overwrite or remove any existing detection records.
             if(!baseline && finding.candidate) db.insertOrThrow("observations",null,ContentValues().apply {
                 put("name",file.name);put("path",file.absolutePath);put("size",stamp.size);put("detected",System.currentTimeMillis())
@@ -62,5 +155,28 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 1
             db.setTransactionSuccessful()
             return !baseline && finding.candidate
         } finally { db.endTransaction() }
+    }
+
+    private fun detectedFile(c: android.database.Cursor) = DetectedFile(
+        id = c.getLong(0), name = c.getString(1), path = c.getString(2), size = c.getLong(3),
+        time = c.getLong(4), source = c.getString(5), confidence = c.getString(6),
+        reason = c.getString(7), via = c.getString(8),
+        projectId = if(c.isNull(9)) null else c.getLong(9), projectName = c.getString(10),
+        projectConfidence = c.getString(11) ?: "Unassigned"
+    )
+    private fun insertHistory(db: SQLiteDatabase, title: String, detail: String, time: Long) {
+        db.insertOrThrow("history",null,ContentValues().apply {
+            put("title",title);put("detail",detail);put("time",time)
+        })
+    }
+}
+
+object ProjectNames {
+    const val MAX_LENGTH = 80
+    fun clean(raw: String): String {
+        val name = raw.trim().replace(Regex("\\s+")," ")
+        require(name.isNotEmpty()) { "Enter a project name" }
+        require(name.length <= MAX_LENGTH) { "Use $MAX_LENGTH characters or fewer" }
+        return name
     }
 }
