@@ -35,6 +35,10 @@ The Android proof used disposable fixture files rather than Kel's personal folde
 
 The corrected personal 0.1.1 APK has SHA-256 `e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1`. Its signature, certificate, 16 KB ZIP alignment and packaged entries were verified. Private signing and recovery records remain outside this public repository. Future phone APKs must use the same backed-up personal identity to update the installed copy.
 
+The personal Stage 2 update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-256 `79ca2ce8b2d80318191516279d55642dc54355c540e36db571345460ae3d4cee`. APK Signature Scheme v3 verification passed. Its certificate SHA-256 is `538093df7ff5c1e9658785da5530307e3db4d01daa921b3fcbc1e3e7a1bb798b`, matching the preserved personal signing record used for the installed 0.1.1 build. All 19 non-signature APK entries match the tested Gradle output byte-for-byte.
+
+[Packaging run 36292038157](https://github.com/KpDaze/FileMate-Public/actions/runs/36292038157) built, tested and linted the payload before its one-day packaging artifact was retrieved. The private key never entered the repository or GitHub Actions. [Final main run 36292283138](https://github.com/KpDaze/FileMate-Public/actions/runs/36292283138) passed after automatic artifact upload was disabled again.
+
 `docs/test-01-artifact.json` describes the rejected 0.1.0 artifact and must not be treated as the corrected release record.
 
 ## Historical failures retained as evidence

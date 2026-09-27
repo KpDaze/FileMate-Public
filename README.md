@@ -12,6 +12,8 @@ The complete Stage 2 organiser source is now on `main` as `0.2.0-stage2d`. It ad
 
 [Android proof run 36291518440](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518440) passed on Android 15/API 35. Using disposable shared-storage fixtures, it verified exact duplicate detection, project assignment, a conflict-safe destination name, a real move, preservation of the pre-existing destination file and Undo back to the original path. Physical-phone acceptance of Stage 2 remains pending.
 
+The personal phone update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-256 `79ca2ce8b2d80318191516279d55642dc54355c540e36db571345460ae3d4cee`. It is signed with the same backed-up personal certificate as the installed 0.1.1 copy, so Android can apply it as an update. [Final main build 36292283138](https://github.com/KpDaze/FileMate-Public/actions/runs/36292283138) passed after packaging was returned to manual-only mode.
+
 ## Native behaviour
 
 The existing Android proof provides:

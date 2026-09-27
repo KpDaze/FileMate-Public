@@ -1,6 +1,8 @@
-# FileMate corrected proof — phone check
+# FileMate phone checks
 
 The corrected 0.1.1 APK is the valid Test 01 phone build. The original 0.1.0 APK remains rejected because of its Hub launch bug.
+
+The Stage 2 update is `FileMate-0.2.0-Stage2.apk`, version code 3. Install it over the existing personal copy; do not uninstall first. Its backed-up personal signing certificate matches the installed 0.1.1 build. Android may repeat its sideload or Play Protect warning because this remains a private APK.
 
 ## Result recorded on 27 September 2026
 
