@@ -39,3 +39,4 @@ adb shell pm grant app.filemate android.permission.READ_MEDIA_VIDEO
 probe restored
 publish FileMateFixture_changed.png /sdcard/Download/FileMateFixture_download.png
 probe changed
+python3 tools/gallery-ui-smoke.py
