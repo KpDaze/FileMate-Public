@@ -7,7 +7,8 @@ adb shell appops set app.filemate MANAGE_EXTERNAL_STORAGE allow
 adb shell appops set app.filemate GET_USAGE_STATS allow
 adb shell am start -n app.filemate/.MainActivity
 sleep 8
-adb shell am start-foreground-service -n app.filemate/.MonitorService --es request ci-inactivity --es package app.filemate.test.qwen --es label Qwen
+# The debug app owns this non-exported service. Run the command with its UID, as FileMate does.
+adb shell run-as app.filemate am start-foreground-service -n app.filemate/.MonitorService --es request ci-inactivity --es package app.filemate.test.qwen --es label Qwen
 sleep 25
 
 read_state() {
