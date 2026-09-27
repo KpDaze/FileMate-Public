@@ -1,0 +1,20 @@
+{
+  "recordedAtUtc": "2026-09-25T15:50:33.327499+00:00",
+  "lastCompletedProbe": {
+    "tag": "inactivity-timed-02",
+    "deviceUnixSeconds": 1790351180,
+    "elapsedSinceHomeSeconds": 728,
+    "uptimeSeconds": 2801.04,
+    "notificationPresent": true,
+    "sessionActive": "true",
+    "automaticStop": [],
+    "observationCount": 5
+  },
+  "connectionFailure": [
+    "exec cell 204 not found",
+    "write_stdin failed: Unknown process id 63462"
+  ],
+  "reconnectResult": "Fresh adb connection listed no devices",
+  "conclusion": "Full timeout result is inconclusive. The last observed FileMate session was active and its notification present. No application failure is inferred from control-session loss.",
+  "preserved": "Source and completed evidence already saved in GitHub; compiled unsigned build checkpoint saved separately."
+}

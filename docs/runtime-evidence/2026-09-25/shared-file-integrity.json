@@ -1,0 +1,36 @@
+{
+  "syntheticFilesOnly": true,
+  "allNamesAndContentsPreserved": true,
+  "files": [
+    {
+      "name": "ChatGPT_fixture_1790349835566.txt",
+      "sha256": "27646591154f3cf88ef902c49de9a1a02cfaaf470956a61c2932c46979461591",
+      "contentMatchesFixtureExport": true
+    },
+    {
+      "name": "Qwen_fixture_1790349703601.txt",
+      "sha256": "386850fda5993bbe286755b3283aadf42363e0a876a82094b82c032c18d4ea43",
+      "contentMatchesFixtureExport": true
+    },
+    {
+      "name": "Qwen_fixture_1790349912084.txt",
+      "sha256": "284037bb64724da31d6ccdc76980f762376dade1de2890ac63af8658736bc51d",
+      "contentMatchesFixtureExport": true
+    },
+    {
+      "name": "Qwen_fixture_1790350066006.txt",
+      "sha256": "2c58a383992e9b7d1bd0ee9ec312f98c3294f137bc881d890214570f424e4b80",
+      "contentMatchesFixtureExport": true
+    },
+    {
+      "name": "notes_1790349717431.txt",
+      "sha256": "ce40e2f769b01ea59d531965b0dcdaec261bf4d34bd09fe2a1943e8d58d696cd",
+      "contentMatchesFixtureExport": true
+    },
+    {
+      "name": "receipt_1790349710419.pdf",
+      "sha256": "a1488c22af17e886d98048c0f5bb54af4455765aefe050e36f79134278ead2ac",
+      "contentMatchesFixtureExport": true
+    }
+  ]
+}

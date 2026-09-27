@@ -1,0 +1,39 @@
+{
+  "filename": "FileMate-Test-01.apk",
+  "package": "app.filemate",
+  "version": "0.1.0-proof",
+  "versionCode": 1,
+  "bytes": 8280880,
+  "sha256": "19ecc6ba0dcf510535b1959273066c769ba314d5208783806cf9393b8b96c520",
+  "certificateSha256": "0c21cded3ef0a7a28dc647753d9383c5dbee4a065127c49f6a43ff37383ebd76",
+  "minAndroid": "11",
+  "targetApi": 36,
+  "compiledSourceCommit": "c5a93f85cf7bf1f7feafb4980e42e4449bd7d986",
+  "verifiedAtUtc": "2026-09-25T12:27:24.185295+00:00",
+  "checks": {
+    "jvmTestsPassed": 8,
+    "jvmTestsFailed": 0,
+    "lintErrors": 0,
+    "lintWarnings": 1,
+    "lintWarning": "Newer core-ktx is available; retained pinned 1.17.0.",
+    "apkSignature": "verified (v3)",
+    "zipAlignment": "verified (16 KB)",
+    "packagedEntries": "identical to Gradle output",
+    "internetPermission": false,
+    "emulatorInstallation": "not verified; Android was not fully booted and its installer failed",
+    "physicalPhone": "not yet tested"
+  },
+  "preservation": {
+    "source": "KpDaze/FileMate",
+    "apk": "Durable save confirmed",
+    "privateSigningBackup": "Durable save confirmed; never committed to Git"
+  },
+  "status": "ON HOLD: Hub app launch failed in runtime verification; do not install for acceptance testing",
+  "runtimeFollowup": {
+    "date": "2026-09-25",
+    "androidApi": 35,
+    "installation": "passed once emulator fully ready",
+    "hubLaunch": "failed; corrected source in 0.1.1",
+    "report": "docs/RUNTIME-VERIFICATION.md"
+  }
+}

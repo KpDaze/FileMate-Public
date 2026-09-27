@@ -1,0 +1,22 @@
+[
+  {
+    "tag": "inactivity-timed-01",
+    "deviceUnixSeconds": 1790351132,
+    "elapsedSinceHomeSeconds": 680,
+    "uptimeSeconds": 2752.5,
+    "notificationPresent": true,
+    "sessionActive": "true",
+    "automaticStop": [],
+    "observationCount": 5
+  },
+  {
+    "tag": "inactivity-timed-02",
+    "deviceUnixSeconds": 1790351180,
+    "elapsedSinceHomeSeconds": 728,
+    "uptimeSeconds": 2801.04,
+    "notificationPresent": true,
+    "sessionActive": "true",
+    "automaticStop": [],
+    "observationCount": 5
+  }
+]

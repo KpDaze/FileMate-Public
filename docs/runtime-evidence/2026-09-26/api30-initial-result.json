@@ -1,0 +1,10 @@
+{
+  "status": "incomplete",
+  "error": "adb failed: ['shell', 'settings', 'put'] adb.vendor: device offline\n",
+  "lastEvent": {
+    "kind": "ready",
+    "hostUnixSeconds": 1790373334.0439467,
+    "elapsedSeconds": 993
+  },
+  "interpretation": "Android reached ready at 993 seconds. A previously requested diagnostic/restart stopped it during optional setup before installation. No FileMate result."
+}

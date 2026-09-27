@@ -1,0 +1,5 @@
+1790350452
+2073.10 1170.32
+0|app.filemate|44|null|10148
+-1|android|55|null|1000
+      topResumedActivity=ActivityRecord{5c230db u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}

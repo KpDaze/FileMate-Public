@@ -1,0 +1,29 @@
+[
+  {
+    "args": [
+      "shell",
+      "ls -ld /sdcard /sdcard/Download /storage/emulated/0"
+    ],
+    "code": 1,
+    "output": "ls: /sdcard/Download: No such file or directory\nlrw-r--r-- 1 root root 21 2023-05-04 16:16 /sdcard -> /storage/self/primary\ndrwxr-xr-x 2 root root 40 2026-09-25 22:10 /storage/emulated/0\n"
+  },
+  {
+    "args": [
+      "shell",
+      "dumpsys",
+      "user"
+    ],
+    "code": 0,
+    "output": "Can't find service: user\n"
+  },
+  {
+    "args": [
+      "shell",
+      "service",
+      "check",
+      "package"
+    ],
+    "code": 0,
+    "output": "Service package: not found\n"
+  }
+]

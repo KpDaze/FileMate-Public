@@ -1,0 +1,17 @@
+{
+  "status": "blocked_before_acceptance_test",
+  "fullThirtyMinuteCheck": "not run; not passed",
+  "apkSha256": "e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1",
+  "productionCodeChanged": false,
+  "appTimeoutChanged": false,
+  "clockChanged": false,
+  "kvmDeviceAvailable": false,
+  "freshApi35": "system-service crashes before FileMate installation",
+  "firstApi30": "ready at 993 seconds; queued restart interrupted optional setup before installation",
+  "singleCoreWarmRestart": "readiness not reached within 600-second allowance",
+  "finalTwoCoreRestart": "readiness not reached within 1200-second allowance; user/package services unavailable in diagnostic",
+  "phoneTest": "not performed",
+  "signedApkSaved": true,
+  "paidHostedTestingEnabled": false,
+  "nextDecision": "Ask user before using any potentially billable hosted test runner, per handover section 25."
+}

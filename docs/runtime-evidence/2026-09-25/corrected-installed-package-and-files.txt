@@ -1,0 +1,18 @@
+package:/data/app/~~_3Vb6jPDqjH0d9WD4J5xFA==/app.filemate-vxnkcsXYUDJHE2EGgNiRaw==/base.apk
+3fe53f18047a668239c6fd6fd4348baaf8ebc7eee69829625bdd6cf3b7efd970  /data/app/~~_3Vb6jPDqjH0d9WD4J5xFA==/app.filemate-vxnkcsXYUDJHE2EGgNiRaw==/base.apk
+total 48
+-rwxrwx--- 1 u0_a131 media_rw 75 2026-09-25 11:23 ChatGPT_fixture_1790349835566.txt
+-rwxrwx--- 1 u0_a131 media_rw 72 2026-09-25 11:21 Qwen_fixture_1790349703601.txt
+-rwxrwx--- 1 u0_a131 media_rw 72 2026-09-25 11:25 Qwen_fixture_1790349912084.txt
+-rwxrwx--- 1 u0_a131 media_rw 72 2026-09-25 11:27 Qwen_fixture_1790350066006.txt
+-rwxrwx--- 1 u0_a131 media_rw 65 2026-09-25 11:21 notes_1790349717431.txt
+-rwxrwx--- 1 u0_a131 media_rw 67 2026-09-25 11:21 receipt_1790349710419.pdf
+27646591154f3cf88ef902c49de9a1a02cfaaf470956a61c2932c46979461591  /sdcard/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt
+386850fda5993bbe286755b3283aadf42363e0a876a82094b82c032c18d4ea43  /sdcard/Download/FileMateTests/Qwen_fixture_1790349703601.txt
+284037bb64724da31d6ccdc76980f762376dade1de2890ac63af8658736bc51d  /sdcard/Download/FileMateTests/Qwen_fixture_1790349912084.txt
+2c58a383992e9b7d1bd0ee9ec312f98c3294f137bc881d890214570f424e4b80  /sdcard/Download/FileMateTests/Qwen_fixture_1790350066006.txt
+ce40e2f769b01ea59d531965b0dcdaec261bf4d34bd09fe2a1943e8d58d696cd  /sdcard/Download/FileMateTests/notes_1790349717431.txt
+a1488c22af17e886d98048c0f5bb54af4455765aefe050e36f79134278ead2ac  /sdcard/Download/FileMateTests/receipt_1790349710419.pdf
+1790350852
+0|app.filemate|44|null|10148
+-1|android|55|null|1000

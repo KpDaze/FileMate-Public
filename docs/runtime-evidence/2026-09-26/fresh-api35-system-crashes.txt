@@ -1,0 +1,30 @@
+--------- beginning of crash
+09-25 21:30:15.805  1296  1296 E AndroidRuntime: FATAL EXCEPTION: main
+09-25 21:30:15.805  1296  1296 E AndroidRuntime: Process: com.android.phone, PID: 1296
+09-25 21:30:15.805  1296  1296 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-25 21:30:17.613  1269  1269 E AndroidRuntime: FATAL EXCEPTION: main
+09-25 21:30:17.613  1269  1269 E AndroidRuntime: Process: com.android.bluetooth, PID: 1269
+09-25 21:30:17.613  1269  1269 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-25 21:30:17.929  1120  1221 E AndroidRuntime: FATAL EXCEPTION: pool-2-thread-2
+09-25 21:30:17.929  1120  1221 E AndroidRuntime: Process: com.android.permissioncontroller, PID: 1120
+09-25 21:30:17.929  1120  1221 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-25 21:30:17.971  1111  1235 E AndroidRuntime: FATAL EXCEPTION: SysUiBg
+09-25 21:30:17.971  1111  1235 E AndroidRuntime: Process: com.android.systemui, PID: 1111
+09-25 21:30:17.971  1111  1235 E AndroidRuntime: DeadSystemException: The system died; earlier logs will point to the root cause
+09-25 21:33:09.023  1884  2038 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 2038 (bt_stack_manage), pid 1884 (droid.bluetooth)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: *** FATAL EXCEPTION IN SYSTEM PROCESS: main
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: java.lang.IllegalStateException: Lost network stack. This is not the root cause of any issue, it is a side effect of a crash that happened earlier. Earlier logs should point to the actual issue.
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.net.ConnectivityModuleConnector.maybeCrashWithTerribleFailure(ConnectivityModuleConnector.java:335)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.net.ConnectivityModuleConnector.-$$Nest$mmaybeCrashWithTerribleFailure(ConnectivityModuleConnector.java:0)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.net.ConnectivityModuleConnector$ModuleServiceConnection.onServiceDisconnected(ConnectivityModuleConnector.java:278)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.app.LoadedApk$ServiceDispatcher.doDeath(LoadedApk.java:2230)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.app.LoadedApk$ServiceDispatcher$RunConnection.run(LoadedApk.java:2245)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.os.Handler.handleCallback(Handler.java:959)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:100)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.os.Looper.loopOnce(Looper.java:232)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:317)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at com.android.server.SystemServer.run(SystemServer.java:973)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at com.android.server.SystemServer.main(SystemServer.java:657)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:580)
+09-25 21:33:29.665  1493  1493 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:864)

@@ -1,0 +1,11 @@
+{
+  "status": "incomplete",
+  "error": "Emulator exited before readiness: 1",
+  "lastEvent": {
+    "kind": "booting",
+    "hostUnixSeconds": 1790373410.2140064,
+    "elapsedSeconds": 0,
+    "bootCompleted": ""
+  },
+  "interpretation": "Restart hit stale test-device lock. No FileMate result."
+}

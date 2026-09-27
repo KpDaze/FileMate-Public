@@ -1,0 +1,10 @@
+{
+  "status": "incomplete",
+  "error": "Android readiness not reached; no acceptance test performed",
+  "lastEvent": {
+    "kind": "booting",
+    "hostUnixSeconds": 1790375376.3723907,
+    "elapsedSeconds": 1197,
+    "bootCompleted": "1"
+  }
+}

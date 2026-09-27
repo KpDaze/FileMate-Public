@@ -1,0 +1,11 @@
+[
+  {
+    "command": [
+      "shell",
+      "input tap 210 700\nsleep 5\ncmd notification list"
+    ],
+    "code": 0,
+    "stdout": "-1|android|55|null|1000\n",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "status": "incomplete",
+  "error": "Hub not ready; see UI evidence",
+  "lastEvent": {
+    "kind": "installed",
+    "hostUnixSeconds": 1790353987.595467,
+    "sha256": "e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1"
+  }
+}

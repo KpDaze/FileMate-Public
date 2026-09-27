@@ -1,0 +1,10 @@
+{
+  "status": "incomplete",
+  "error": "Emulator exited before readiness: -11",
+  "lastEvent": {
+    "kind": "booting",
+    "hostUnixSeconds": 1790353231.8042767,
+    "elapsedSeconds": 0,
+    "bootCompleted": ""
+  }
+}

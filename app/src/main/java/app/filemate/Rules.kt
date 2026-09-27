@@ -1,0 +1,39 @@
+package app.filemate
+
+/** Pure policies, kept independent of Android so important boundaries can be tested. */
+data class FileStamp(val size: Long, val modified: Long)
+data class AiContext(val label: String, val packageName: String, val lastUsedAt: Long)
+data class Finding(val candidate: Boolean, val source: String?, val confidence: String, val reason: String)
+
+object FileRules {
+    private val providers = listOf("ChatGPT", "Qwen", "Grok", "Claude", "Gemini", "DALL-E")
+    private val excludedExtensions = setOf("apk", "apks", "xapk", "aab")
+    private val unrelated = Regex("(?i)(^|[ _.-])(receipt|invoice|bank|statement|payslip)([ _.-]|$)")
+    fun temporary(name: String): Boolean = name.startsWith(".") ||
+        listOf(".part", ".partial", ".tmp", ".crdownload", ".download").any { name.endsWith(it, true) }
+    fun changed(previous: FileStamp?, current: FileStamp) = previous != current
+    fun classify(name: String, context: AiContext?, now: Long): Finding {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        if (temporary(name) || ext in excludedExtensions || unrelated.containsMatchIn(name))
+            return Finding(false, null, "None", "No useful AI evidence; left untouched.")
+        val normalized = name.lowercase().replace("dall·e", "dall-e").replace("dall_e", "dall-e")
+        val named = providers.firstOrNull { normalized.contains(it.lowercase()) }
+        val recent = context?.takeIf { now - it.lastUsedAt in 0..120_000 }
+        if (named != null) {
+            val agrees = recent?.label?.contains(named, ignoreCase = true) == true
+            return Finding(true, named, if (agrees) "High" else "Medium",
+                if (agrees) "Filename mentions $named and $named was recently used. Source is still an estimate."
+                else "Filename mentions $named. App activity does not confirm the source.")
+        }
+        // Timing alone never justifies moving/renaming or a certain source attribution.
+        if (recent != null && ext in setOf("png", "jpg", "jpeg", "webp", "pdf", "md", "txt", "csv", "json", "zip", "docx", "svg", "html"))
+            return Finding(true, recent.label, "Low", "Appeared near ${recent.label} activity. Timing alone cannot identify its source; review when convenient.")
+        return Finding(false, null, "None", "No useful AI evidence; left untouched.")
+    }
+}
+
+class SessionClock(private val timeoutMs: Long = 30 * 60_000L) {
+    var lastAiActivity: Long = 0; private set
+    fun touch(elapsed: Long) { lastAiActivity = elapsed }
+    fun expired(elapsed: Long) = elapsed - lastAiActivity >= timeoutMs
+}

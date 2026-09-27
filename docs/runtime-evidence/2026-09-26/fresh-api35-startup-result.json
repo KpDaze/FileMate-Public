@@ -1,0 +1,11 @@
+{
+  "status": "incomplete",
+  "error": "Emulator exited before readiness: 0",
+  "lastEvent": {
+    "kind": "booting",
+    "hostUnixSeconds": 1790372243.407825,
+    "elapsedSeconds": 1043,
+    "bootCompleted": "1"
+  },
+  "interpretation": "Stopped intentionally after Android system-service crashes and unavailable shared storage; FileMate was not installed or exercised."
+}

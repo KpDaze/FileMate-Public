@@ -1,0 +1,11 @@
+{
+  "status": "incomplete",
+  "error": "Android readiness not reached; no acceptance test performed",
+  "lastEvent": {
+    "kind": "booting",
+    "hostUnixSeconds": 1790374076.554285,
+    "elapsedSeconds": 593,
+    "bootCompleted": "1"
+  },
+  "interpretation": "Single-core warm restart did not satisfy readiness within the 600-second startup allowance. No FileMate result."
+}

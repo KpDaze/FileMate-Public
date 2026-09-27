@@ -1,0 +1,13 @@
+[
+  {
+    "command": [
+      "shell",
+      "cmd",
+      "notification",
+      "list"
+    ],
+    "code": 0,
+    "stdout": "0|app.filemate|44|null|10148\n-1|android|55|null|1000\n",
+    "stderr": ""
+  }
+]

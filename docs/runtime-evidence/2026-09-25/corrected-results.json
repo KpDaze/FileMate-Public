@@ -1,0 +1,1163 @@
+{
+  "sourceCommit": "1a4d6c8d18a2e4ee77cb5d56d55da075cc3ff1c4",
+  "package": "app.filemate",
+  "version": "0.1.1-proof",
+  "versionCode": 2,
+  "runtimeApkSha256": "3fe53f18047a668239c6fd6fd4348baaf8ebc7eee69829625bdd6cf3b7efd970",
+  "signature": "Disposable emulator fixture identity; not the user release signing key",
+  "device": {
+    "api": "35",
+    "bootCompleted": "1",
+    "bootSeconds": 926,
+    "packageService": "package:/system/framework/framework-res.apk",
+    "activityService": "Service activity: found",
+    "hardwareAcceleration": false
+  },
+  "limits": [
+    "Synthetic MediaStore exporters, not actual AI provider apps",
+    "Corrected run used adb permission grants and a two-app Hub seed; original run exercised unchanged permission and installed-app picker UI",
+    "No physical phone acceptance yet",
+    "Not a performance benchmark; software-emulated Android had System UI and Bluetooth stalls",
+    "Full 30-minute timeout and final crash-log capture interrupted when execution and emulator control sessions became unavailable"
+  ],
+  "jvmTests": {
+    "name": "app.filemate.RulesTest",
+    "tests": "8",
+    "skipped": "0",
+    "failures": "0",
+    "errors": "0",
+    "timestamp": "2026-09-25T14:50:02.581Z",
+    "hostname": "3d44a8d77724",
+    "time": "0.087"
+  },
+  "phases": {
+    "corrected-launch": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        }
+      ],
+      "state": [
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790349634799"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790349635168"
+        },
+        {
+          "key": "last_check",
+          "value": "1790349635263"
+        },
+        {
+          "key": "session_active",
+          "value": "true"
+        }
+      ]
+    },
+    "corrected-live": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        }
+      ],
+      "state": [
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790349634799"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790349635168"
+        },
+        {
+          "key": "last_check",
+          "value": "1790349635263"
+        },
+        {
+          "key": "session_active",
+          "value": "true"
+        },
+        {
+          "key": "ignored",
+          "value": "1"
+        }
+      ]
+    },
+    "corrected-switched": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        }
+      ],
+      "state": [
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790349634799"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790349635168"
+        },
+        {
+          "key": "last_check",
+          "value": "1790349635263"
+        },
+        {
+          "key": "session_active",
+          "value": "true"
+        },
+        {
+          "key": "ignored",
+          "value": "1"
+        }
+      ]
+    },
+    "corrected-before-catchup": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        },
+        {
+          "id": 7,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 5 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349936489
+        },
+        {
+          "id": 8,
+          "title": "Monitoring stopped",
+          "detail": "Stopped from FileMate or its notification.",
+          "time": 1790350004146
+        }
+      ],
+      "state": [
+        {
+          "key": "ignored",
+          "value": "1"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790349936081"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790349936326"
+        },
+        {
+          "key": "last_check",
+          "value": "1790349936405"
+        },
+        {
+          "key": "session_active",
+          "value": "false"
+        }
+      ]
+    },
+    "corrected-catchup": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 5,
+          "name": "Qwen_fixture_1790350066006.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790350066006.txt",
+          "size": 72,
+          "detected": 1790350106829,
+          "source": "Qwen",
+          "confidence": "Medium",
+          "reason": "Filename mentions Qwen. App activity does not confirm the source.",
+          "via": "Catch-up"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        },
+        {
+          "id": 7,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 5 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349936489
+        },
+        {
+          "id": 8,
+          "title": "Monitoring stopped",
+          "detail": "Stopped from FileMate or its notification.",
+          "time": 1790350004146
+        },
+        {
+          "id": 9,
+          "title": "Catch-up complete",
+          "detail": "1 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350107673
+        }
+      ],
+      "state": [
+        {
+          "key": "ignored",
+          "value": "1"
+        },
+        {
+          "key": "session_active",
+          "value": "false"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790350107062"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790350107281"
+        },
+        {
+          "key": "last_check",
+          "value": "1790350107381"
+        }
+      ]
+    },
+    "corrected-dedup": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 5,
+          "name": "Qwen_fixture_1790350066006.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790350066006.txt",
+          "size": 72,
+          "detected": 1790350106829,
+          "source": "Qwen",
+          "confidence": "Medium",
+          "reason": "Filename mentions Qwen. App activity does not confirm the source.",
+          "via": "Catch-up"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        },
+        {
+          "id": 7,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 5 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349936489
+        },
+        {
+          "id": 8,
+          "title": "Monitoring stopped",
+          "detail": "Stopped from FileMate or its notification.",
+          "time": 1790350004146
+        },
+        {
+          "id": 9,
+          "title": "Catch-up complete",
+          "detail": "1 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350107673
+        },
+        {
+          "id": 10,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350191353
+        }
+      ],
+      "state": [
+        {
+          "key": "ignored",
+          "value": "1"
+        },
+        {
+          "key": "session_active",
+          "value": "false"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790350190747"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790350191139"
+        },
+        {
+          "key": "last_check",
+          "value": "1790350191290"
+        }
+      ]
+    },
+    "inactivity-start": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 5,
+          "name": "Qwen_fixture_1790350066006.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790350066006.txt",
+          "size": 72,
+          "detected": 1790350106829,
+          "source": "Qwen",
+          "confidence": "Medium",
+          "reason": "Filename mentions Qwen. App activity does not confirm the source.",
+          "via": "Catch-up"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        },
+        {
+          "id": 7,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 5 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349936489
+        },
+        {
+          "id": 8,
+          "title": "Monitoring stopped",
+          "detail": "Stopped from FileMate or its notification.",
+          "time": 1790350004146
+        },
+        {
+          "id": 9,
+          "title": "Catch-up complete",
+          "detail": "1 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350107673
+        },
+        {
+          "id": 10,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350191353
+        },
+        {
+          "id": 11,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350416493
+        },
+        {
+          "id": 12,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350417569
+        },
+        {
+          "id": 13,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790350417781
+        },
+        {
+          "id": 14,
+          "title": "AI opened from Hub",
+          "detail": "ChatGPT Test. File watchers were ready before launch.",
+          "time": 1790350418758
+        }
+      ],
+      "state": [
+        {
+          "key": "ignored",
+          "value": "1"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790350417301"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790350417419"
+        },
+        {
+          "key": "last_check",
+          "value": "1790350417479"
+        },
+        {
+          "key": "session_active",
+          "value": "true"
+        }
+      ]
+    },
+    "last-observed-inactivity": {
+      "hub": [
+        {
+          "package": "app.filemate.test.chatgpt",
+          "label": "ChatGPT Test"
+        },
+        {
+          "package": "app.filemate.test.qwen",
+          "label": "Qwen Test"
+        }
+      ],
+      "observations": [
+        {
+          "id": 1,
+          "name": "Qwen_fixture_1790349703601.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349703601.txt",
+          "size": 72,
+          "detected": 1790349711039,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 2,
+          "name": "notes_1790349717431.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/notes_1790349717431.txt",
+          "size": 65,
+          "detected": 1790349721731,
+          "source": "Qwen Test",
+          "confidence": "Low",
+          "reason": "Appeared near Qwen Test activity. Timing alone cannot identify its source; review when convenient.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 3,
+          "name": "ChatGPT_fixture_1790349835566.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/ChatGPT_fixture_1790349835566.txt",
+          "size": 75,
+          "detected": 1790349839604,
+          "source": "ChatGPT",
+          "confidence": "High",
+          "reason": "Filename mentions ChatGPT and ChatGPT was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 4,
+          "name": "Qwen_fixture_1790349912084.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790349912084.txt",
+          "size": 72,
+          "detected": 1790349915993,
+          "source": "Qwen",
+          "confidence": "High",
+          "reason": "Filename mentions Qwen and Qwen was recently used. Source is still an estimate.",
+          "via": "Live monitoring"
+        },
+        {
+          "id": 5,
+          "name": "Qwen_fixture_1790350066006.txt",
+          "path": "/storage/emulated/0/Download/FileMateTests/Qwen_fixture_1790350066006.txt",
+          "size": 72,
+          "detected": 1790350106829,
+          "source": "Qwen",
+          "confidence": "Medium",
+          "reason": "Filename mentions Qwen. App activity does not confirm the source.",
+          "via": "Catch-up"
+        }
+      ],
+      "history": [
+        {
+          "id": 1,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349474243
+        },
+        {
+          "id": 2,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349476490
+        },
+        {
+          "id": 3,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349632979
+        },
+        {
+          "id": 4,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 0 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349635394
+        },
+        {
+          "id": 5,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790349635720
+        },
+        {
+          "id": 6,
+          "title": "AI opened from Hub",
+          "detail": "Qwen Test. File watchers were ready before launch.",
+          "time": 1790349637113
+        },
+        {
+          "id": 7,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 5 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790349936489
+        },
+        {
+          "id": 8,
+          "title": "Monitoring stopped",
+          "detail": "Stopped from FileMate or its notification.",
+          "time": 1790350004146
+        },
+        {
+          "id": 9,
+          "title": "Catch-up complete",
+          "detail": "1 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350107673
+        },
+        {
+          "id": 10,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350191353
+        },
+        {
+          "id": 11,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350416493
+        },
+        {
+          "id": 12,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350417569
+        },
+        {
+          "id": 13,
+          "title": "Monitoring started",
+          "detail": "Download events are being watched. Your files remain unchanged.",
+          "time": 1790350417781
+        },
+        {
+          "id": 14,
+          "title": "AI opened from Hub",
+          "detail": "ChatGPT Test. File watchers were ready before launch.",
+          "time": 1790350418758
+        },
+        {
+          "id": 15,
+          "title": "Catch-up complete",
+          "detail": "0 likely AI files found. 6 accessible files checked in Downloads and Documents. Existing files are indexed on first access.",
+          "time": 1790350584059
+        }
+      ],
+      "state": [
+        {
+          "key": "ignored",
+          "value": "1"
+        },
+        {
+          "key": "session_active",
+          "value": "true"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Download",
+          "value": "1790350583011"
+        },
+        {
+          "key": "baseline:/storage/emulated/0/Documents",
+          "value": "1790350583768"
+        },
+        {
+          "key": "last_check",
+          "value": "1790350583964"
+        }
+      ]
+    }
+  },
+  "inactivity": {
+    "status": "inconclusive_environment_connection_lost",
+    "homeCommand": {
+      "command": [
+        "shell",
+        "input keyevent 3\ndate +%s\ncat /proc/uptime\ncmd notification list\ndumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity'"
+      ],
+      "code": 0,
+      "stdout": "1790350452\n2073.10 1170.32\n0|app.filemate|44|null|10148\n-1|android|55|null|1000\n      topResumedActivity=ActivityRecord{5c230db u0 com.android.launcher3/.uioverrides.QuickstepLauncher t7}\n",
+      "stderr": ""
+    },
+    "expectedTimeoutSeconds": 1800,
+    "clockAltered": false,
+    "probes": [
+      {
+        "tag": "inactivity-timed-01",
+        "deviceUnixSeconds": 1790351132,
+        "elapsedSinceHomeSeconds": 680,
+        "uptimeSeconds": 2752.5,
+        "notificationPresent": true,
+        "sessionActive": "true",
+        "automaticStop": [],
+        "observationCount": 5
+      },
+      {
+        "tag": "inactivity-timed-02",
+        "deviceUnixSeconds": 1790351180,
+        "elapsedSinceHomeSeconds": 728,
+        "uptimeSeconds": 2801.04,
+        "notificationPresent": true,
+        "sessionActive": "true",
+        "automaticStop": [],
+        "observationCount": 5
+      }
+    ],
+    "lastVerifiedInactiveIntervalSeconds": 728,
+    "lastSessionActive": true,
+    "lastNotificationPresent": true
+  },
+  "checks": {
+    "qwenHubLaunch": "passed",
+    "chatgptHubLaunch": "passed",
+    "monitoringReadyBeforeLaunch": "passed",
+    "liveBackgroundDetection": "passed",
+    "unrelatedReceiptIgnored": "passed",
+    "genericNotesLowConfidence": "passed",
+    "selectedAppSwitching": "passed",
+    "androidRecentAppsReturn": "passed",
+    "manualStopAndNotificationRemoval": "passed",
+    "missedFileCatchup": "passed",
+    "reopenWithoutDuplicateRecords": "passed",
+    "fullInactivityStop": "inconclusive: test connection lost after 728 seconds; no pass claimed",
+    "installedPackageHash": "passed: installed base.apk matches runtime candidate SHA-256",
+    "sharedFileNamesAndContents": "passed: all six original names and generated content hashes match"
+  }
+}
