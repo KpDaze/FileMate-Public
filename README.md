@@ -8,7 +8,9 @@ The corrected 0.1.1 Android proof passed its bounded Android 15 fixture checks a
 
 Kel installed the corrected APK on a physical phone on 27 September 2026. Installation and the screens tried appeared to work. The later broad-access setup was deliberately left incomplete, so real-provider downloads, ordinary app switching and the 30-minute stop are not yet accepted on that phone.
 
-Stage 2A source is now on `main`. It adds manual project creation, rename, delete, project browsing and a non-destructive database migration. [Build run 36289780572](https://github.com/KpDaze/FileMate-Public/actions/runs/36289780572) passed the JVM tests, Android lint and debug assembly. Stage 2A does not assign, move, rename or delete phone files. The current Stage 2 source has not been packaged as a phone update; Kel plans to use one APK after the complete Stage 2 checkpoint.
+The complete Stage 2 organiser source is now on `main` as `0.2.0-stage2d`. It adds manual projects, Needs Sorting, single and batch assignment, a deliberate phone cleanup scan, previewed move/rename actions, conflict-safe filenames, an action journal and Undo. [Build run 36291518444](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518444) passed the JVM tests, Android lint and debug assembly.
+
+[Android proof run 36291518440](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518440) passed on Android 15/API 35. Using disposable shared-storage fixtures, it verified exact duplicate detection, project assignment, a conflict-safe destination name, a real move, preservation of the pre-existing destination file and Undo back to the original path. Physical-phone acceptance of Stage 2 remains pending.
 
 ## Native behaviour
 
@@ -21,9 +23,11 @@ The existing Android proof provides:
 - Optional Usage Access for ordinary switching among selected AI apps.
 - Automatic stop after about 30 minutes without selected AI activity.
 - Catch-up on reopen, plus manual Stop.
-- A local Projects area in Stage 2A. Projects are always created by the user.
+- Projects that are always created by the user, plus Needs Sorting and batch assignment.
+- A deliberate cleanup scan across standard shared folders and optional user-selected folders.
+- Previewed project moves and optional tidy names, with exclusions, conflict-safe names and Undo.
 
-No shared file is moved, renamed, deleted or uploaded in Stage 2A. No network permission, cloud backend, paid service or analytics SDK is included.
+The first cleanup scan changes no files. A move or rename occurs only after the user reviews the preview and applies it. FileMate does not delete files in Stage 2. No network permission, cloud backend, paid service or analytics SDK is included.
 
 ## Build
 
@@ -35,7 +39,7 @@ Requires JDK 17, Android SDK platform 36 and build-tools 35.0.0. The Gradle wrap
 
 APK output: `app/build/outputs/apk/debug/app-debug.apk`. FileMate needs Android 11 or newer. A personal signing key can be supplied using `FILEMATE_TEST_KEY` and `FILEMATE_KEY_PASSWORD`; never commit the key or password. A differently signed APK cannot update the installed personal copy.
 
-The lightweight Android build workflow runs for ordinary app changes. The separate 30-minute emulator workflow runs only when its own workflow or verification script changes, or when manually dispatched.
+The lightweight Android build workflow runs for ordinary app changes. A bounded Stage 2 Android proof covers cleanup, move and Undo. The separate 30-minute emulator workflow runs only when its own workflow or verification script changes, or when manually dispatched.
 
 ## Evidence and roadmap
 

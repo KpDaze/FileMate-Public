@@ -14,11 +14,22 @@ The public run did not select two real AI apps, use provider accounts, test real
 
 Kel installed the corrected 0.1.1 APK on 27 September 2026. Installation and the screens tried appeared to work. Kel left the later broad-access setup incomplete. The physical-phone result is therefore partial: installation/basic opening passed; shared file watching, real AI apps, switching, catch-up and the inactivity stop remain pending.
 
-## Stage 2A
+## Stage 2 organiser
 
-Stage 2A adds local manual projects with create, rename, delete and browse screens. Database version 2 uses a non-destructive migration and retains the Hub, indexed files, observations, history and state from version 1. Project deletion leaves phone files untouched and clears their project assignment for future Needs Sorting.
+The full Stage 2 source uses version `0.2.0-stage2d`, code 3, with non-destructive database migrations through version 4. It provides:
 
-The Stage 2A source uses version `0.2.0-stage2a`, code 3. [Lightweight run 36289780572](https://github.com/KpDaze/FileMate-Public/actions/runs/36289780572) passed the JVM tests, Android lint and debug assembly on 27 September 2026. This source checkpoint is not yet a phone acceptance result or a signed personal update.
+- user-created projects with create, rename, delete and browse;
+- Needs Sorting with source confidence separate from project confidence;
+- single and batch assignment without changing the underlying file;
+- a deliberate cleanup scan covering Downloads, Documents, DCIM, Pictures, Movies, Music and optional folders selected through Android's folder picker;
+- review categories for likely AI files, unsorted downloads, large files, old non-camera files, archives and exact duplicates;
+- previewed project moves and optional tidy names, per-file exclusions, conflict-safe destination names, action journalling and Undo.
+
+Cleanup scanning writes only local metadata. It does not move, rename or delete a file. A physical move/rename requires a second reviewed action. Camera and Pictures items receive an explicit warning and are never selected automatically. Unsupported document providers remain assignment-only. Stage 2 contains no delete action.
+
+[Lightweight run 36291518444](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518444) passed 12 JVM tests, Android lint and debug assembly on 27 September 2026. [Bounded Android run 36291518440](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518440) then passed on Android 15/API 35. Its disposable fixtures proved exact duplicate detection, project assignment, conflict-safe naming (`same (2).txt` when `same.txt` already existed), an actual shared-storage move, preservation of the existing file and Undo to the original path and project state.
+
+The Android proof used disposable fixture files rather than Kel's personal folders. It is source-level and emulator evidence, not physical-phone permission or usability acceptance.
 
 ## Artifact and signing boundary
 

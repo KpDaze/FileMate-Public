@@ -10,7 +10,7 @@ Native Android, Kotlin, Jetpack Compose, local database. Optional Google Drive l
 
 User tap → foreground service → baseline/catch-up → directory observers attached → readiness acknowledgement → Android app launch. The foreground service is explicitly started while FileMate is visible. It is not restarted on boot or kept running permanently. Each FileObserver is strongly retained until the session ends.
 
-Storage is event-driven. Download directory contents are not polled. Per-file stability checks happen only after a file event; they do not prove that every third-party producer has finished writing. Test 01 only records metadata and cannot damage an incomplete file. The later organisation milestone must add stronger completion handling before changing files.
+Storage monitoring is event-driven. Download directory contents are not polled. Per-file stability checks happen after a file event. Stage 2 also validates a file's length and modification time, and an available hash, between preview and apply before changing it. A changed or missing source is refused.
 
 Usage Access is optional. During a session, usage events are sampled every 15 seconds and on a file event. This is not storage polling. Selected AI activity refreshes a monotonic 30-minute timeout. Ordinary Android Recent Apps switching works without returning to FileMate. Screen-off and lock events prevent treating an idle AI screen as continued use. Without permission, the app plainly states that timeout/source context can only use the most recent Hub launch. Android can delay timers while suspending an app; device tests must verify the behaviour and battery restrictions on the actual phone.
 
@@ -26,11 +26,11 @@ A same-path rewrite that preserves both size and modification time is not identi
 
 Filename clues plus nearby selected AI use can raise source confidence. Filename alone is medium confidence. Timing alone is low confidence, never proof of source. Unrecognised files, installers and obvious receipt/bank/statement filenames are excluded from AI Recent. Catch-up cannot reconstruct past app activity and does not pretend to do so. Unknown generic filenames may therefore remain excluded until manual cleanup in a later build.
 
-The source classifier is deliberately preliminary: time correlation can produce false suggestions. Projects are never invented. No project classification or automatic move/rename is implemented in Test 01, even if source confidence is high. All recorded candidates are unassigned and untouched. Subsequent work must keep source confidence separate from project confidence and require sufficient evidence for both before automation.
+The source classifier is deliberately preliminary: time correlation can produce false suggestions. Projects are never invented. Stage 2 keeps source confidence separate from project confidence. Manual assignment confirms the project only in local metadata; it does not change the file. Cleanup moves and optional tidy names require a separate preview and Apply action.
 
 ## Remaining agreed product behaviour
 
-Project is the main organisation unit across AI sources, screenshots, documents and Drive. Projects are created manually. Preserve useful names; store richer metadata separately. High confidence can organise, medium suggests a quick correction, low stays untouched in Needs Sorting. Batch sorting matters. Unrelated live downloads are normally ignored. Cleanup and bulk changes must show a review first. Keep activity and undo where technically possible; prefer recoverable trash; never silently delete.
+Project is the main organisation unit across AI sources, screenshots, documents and Drive. Projects are created manually. Preserve useful names; store richer metadata separately. Low-confidence items stay available in Needs Sorting. Batch assignment changes local project metadata only. Cleanup scanning changes no files, and every move/rename is previewed with per-file exclusions. Stage 2 never deletes a file; moved files receive an action journal and Undo where the source and destination still validate.
 
 The gallery provides chronological local browsing, camera/screenshots/downloads/projects, useful favourites/albums, move/rename/trash and duplicate review. Camera photos are not automatically changed without a deliberate rule or cleanup action. On-device OCR and exact hashes help screenshots; similar images are suggested groups, not proof that any image is disposable. Distinguish duplicates from changed versions.
 

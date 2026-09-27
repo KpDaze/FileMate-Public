@@ -12,6 +12,14 @@ Kel installed the corrected personal APK on a physical phone on 27 September. In
 
 Private signing and recovery records are intentionally outside this public repository. The four private recovery files omitted from the public snapshot are not required to build the public source.
 
+## Stage 2 Android proof — 27 September 2026
+
+[Public run 36291518440](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518440) passed the bounded Stage 2 probe on a standard public runner with KVM and Android 15/API 35. The probe created disposable same-content files in shared Downloads, ran FileMate's production cleanup scanner and confirmed exact duplicate detection. It created a local project, assigned a file, and planned a move into the project folder.
+
+The probe pre-created `same.txt` at the destination. FileMate selected `same (2).txt`, moved the fixture without overwriting the existing file, then used the production action journal and Undo path. The original fixture returned with its data intact and its earlier project/path state restored. [Build run 36291518444](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518444) separately passed 12 JVM tests, Android lint and debug assembly for the same source.
+
+The proof is intentionally bounded and uses disposable fixtures. It does not grant access on Kel's phone, scan personal folders, judge the wording of Android's permission screens or prove physical-phone behaviour. Those checks belong to the Stage 2 phone test.
+
 ## Earlier corrected-build verification — 25 September 2026
 
 ## Corrected build: 0.1.1-proof

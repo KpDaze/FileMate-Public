@@ -14,7 +14,7 @@ This is a **partial phone check**. Installation and basic opening passed. Shared
 - **App activity:** optional; lets FileMate recognise recent use of selected AI apps and extend a session during ordinary switching. It does not read screen contents.
 - **Notifications:** optional on supported Android versions; shows the quiet monitoring status and Stop action.
 
-## Full acceptance steps when testing resumes
+## Stage 1 acceptance steps when testing resumes
 
 1. Open FileMate → Setup and review the three access items above.
 2. Open AI Hub → Add app. Select at least two AI apps already installed on the phone, including any provider absent from the original preview.
@@ -29,4 +29,21 @@ This is a **partial phone check**. Installation and basic opening passed. Shared
 
 Tell the builder the failing step and phone model/Android version only if something fails. No terminal or development tools are needed.
 
-Downloads kept inside another app's private storage cannot be detected. Stage 2A project records do not move files. Needs Sorting, batch assignment, cleanup actions, screenshots, gallery and Drive belong to later checkpoints.
+Downloads kept inside another app's private storage cannot be detected.
+
+## Stage 2 organiser check
+
+Use ordinary disposable files for this check. Avoid selecting camera photos until the basic flow is familiar.
+
+1. Open Projects, create a temporary project, rename it and confirm it opens.
+2. Open Needs Sorting, select one or more detected files and assign them to the project. Assignment should change only FileMate's record; the files should stay in their original folders.
+3. Open Clean Up My Phone and start a scan. Review the results. The scan itself must not move, rename or delete anything.
+4. Select one disposable result and choose the temporary project folder under `Documents/FileMate`. Keep its current name for the first attempt.
+5. Review the exact old and new paths. Exclude anything unexpected, then apply the remaining move.
+6. Check the file at its new path. Open Activity and use Undo. Confirm it returns to its original path.
+7. Repeat only if wanted with the optional tidy filename. If a destination name already exists, FileMate should show a numbered alternative and preserve the existing file.
+8. Delete the temporary project record if no longer needed. Deleting a project must leave its files alone.
+
+If Android asks for broad file access, read the system explanation before granting it. FileMate uses that access for the shared folders listed in Setup; it cannot read another app's private storage. An extra folder is included only when it is deliberately selected through Android's folder picker.
+
+Stage 2 never automatically selects files for a move and has no file deletion action. Screenshots, the gallery and Drive belong to later checkpoints.
