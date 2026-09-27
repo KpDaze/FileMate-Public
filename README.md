@@ -14,6 +14,8 @@ The complete Stage 2 organiser source is now on `main` as `0.2.0-stage2d`. It ad
 
 The personal phone update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-256 `79ca2ce8b2d80318191516279d55642dc54355c540e36db571345460ae3d4cee`. It is signed with the same backed-up personal certificate as the installed 0.1.1 copy, so Android can apply it as an update. [Final main build 36292283138](https://github.com/KpDaze/FileMate-Public/actions/runs/36292283138) passed after packaging was returned to manual-only mode.
 
+A later Stage 2 safeguard repair through `1c59694e88c1beb21a001358acbee8af63fdafe0` enforces exclusive destination creation and fingerprints every previewed move so Undo can refuse same-size edits. Interrupted copies remain for review; older hashless actions are not eligible for automatic Undo. See the [repair verification](docs/VERIFICATION.md). This source repair is not in the installed signed Stage 2 APK; no replacement APK has been delivered and Gallery work has not begun.
+
 ## Native behaviour
 
 The existing Android proof provides:
