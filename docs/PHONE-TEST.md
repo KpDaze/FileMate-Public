@@ -2,7 +2,7 @@
 
 The corrected 0.1.1 APK is the valid Test 01 phone build. The original 0.1.0 APK remains rejected because of its Hub launch bug.
 
-The Stage 2 update is `FileMate-0.2.0-Stage2.apk`, version code 3. Install it over the existing personal copy; do not uninstall first. Its backed-up personal signing certificate matches the installed 0.1.1 build. Android may repeat its sideload or Play Protect warning because this remains a private APK.
+The Stage 2 update is `FileMate-0.2.0-Stage2.apk`, version code 3. It is already installed over the existing personal copy. Its backed-up personal signing certificate matches the installed 0.1.1 build. Android may repeat its sideload or Play Protect warning because this remains a private APK.
 
 ## Result recorded on 27 September 2026
 
@@ -35,6 +35,9 @@ Downloads kept inside another app's private storage cannot be detected.
 
 ## Stage 2 organiser check
 
+The installed version 3 APK predates the later destination-collision and fingerprint/Undo repairs. These steps are retained for a future update containing the repaired source. Do not use personal or Killerfect Security files; Kel has intentionally deferred broad-access phone testing.
+
+
 Use ordinary disposable files for this check. Avoid selecting camera photos until the basic flow is familiar.
 
 1. Open Projects, create a temporary project, rename it and confirm it opens.
@@ -48,4 +51,8 @@ Use ordinary disposable files for this check. Avoid selecting camera photos unti
 
 If Android asks for broad file access, read the system explanation before granting it. FileMate uses that access for the shared folders listed in Setup; it cannot read another app's private storage. An extra folder is included only when it is deliberately selected through Android's folder picker.
 
-Stage 2 never automatically selects files for a move and has no file deletion action. Screenshots, the gallery and Drive belong to later checkpoints.
+Stage 2 never automatically selects files for a move and has no file deletion action. Stage 3A Gallery is implemented in source but is not in this installed APK. Optional Drive remains future work.
+
+## Stage 3A future phone check (not performed)
+
+No Stage 3 signed phone package has been delivered. When Kel chooses the later signed update, use a few disposable photos, screenshots and a short video. Open Phone → Gallery, choose only those items where Android offers that option, check the filters/details, assign one to a temporary project and refresh. Revoke/reselect photo access and confirm the saved assignment returns. No broad All files access is needed solely to browse Gallery; do not pressure Kel to grant it. Check actual Android selection/reselection and thumbnail behaviour on the recorded phone model/Android version. Gallery itself must not move, rename or delete the media.
