@@ -17,7 +17,9 @@ import java.security.MessageDigest
 data class ContentFingerprint(val size: Long, val modified: Long, val hash: String) {
     companion object {
         /** A failed or changing read never becomes a trusted fingerprint. */
-        fun read(file: File): ContentFingerprint? = runCatching {
+        fun read(file: File): ContentFingerprint? = runCatching { readChecked(file) }.getOrNull()
+
+        internal fun readChecked(file: File): ContentFingerprint {
             val path = file.toPath()
             val before = Files.readAttributes(path,BasicFileAttributes::class.java,NOFOLLOW_LINKS)
             check(before.isRegularFile) { "Not a regular file" }
@@ -40,8 +42,8 @@ data class ContentFingerprint(val size: Long, val modified: Long, val hash: Stri
                 before.lastModifiedTime() == after.lastModifiedTime() && before.fileKey() == after.fileKey()) {
                 "File changed while reading"
             }
-            ContentFingerprint(size,after.lastModifiedTime().toMillis(),digest.digest().joinToString("") { "%02x".format(it) })
-        }.getOrNull()
+            return ContentFingerprint(size,after.lastModifiedTime().toMillis(),digest.digest().joinToString("") { "%02x".format(it) })
+        }
 
         fun matches(file: File, size: Long, hash: String?): Boolean {
             if(hash == null) return false

@@ -42,11 +42,11 @@ class Stage2ProbeActivity : ComponentActivity() {
                 val conflict = File(destination,"same.txt").apply { writeText("keep this existing file") }
                 val entry = scan.first.single { it.path == first.absolutePath }
                 val plan = FileOrganiser(app.store).plans(listOf(entry),project,false).single()
-                check(plan.supported)
+                check(plan.supported) { "Preview refused: ${plan.note}; scanned=$entry; fingerprint=${ContentFingerprint.readChecked(first)}" }
                 check(plan.targetName == "same (2).txt")
 
                 val applied = FileOrganiser(app.store).apply(listOf(plan))
-                check(applied.applied == 1 && applied.failed == 0)
+                check(applied.applied == 1 && applied.failed == 0) { "Move result: $applied" }
                 check(!first.exists() && File(plan.targetPath).isFile)
                 check(conflict.readText() == "keep this existing file")
                 val action = app.store.fileActions().first { it.status == "applied" }
