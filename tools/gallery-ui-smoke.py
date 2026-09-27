@@ -8,17 +8,21 @@ def nodes():
     adb('shell','uiautomator','dump','/sdcard/filemate-gallery-ui.xml')
     return list(ET.fromstring(adb('shell','cat','/sdcard/filemate-gallery-ui.xml')).iter('node'))
 
-def wait_text(text):
+def wait_text(text, scroll=False):
     for attempt in range(8):
         current = nodes()
         matched = [n for n in current if n.get('text') == text or n.get('content-desc') == text]
         if matched:
             return matched[0]
+        if scroll and attempt == 2:
+            width,height = map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size'))[-1])
+            adb('shell','input','swipe',str(width//2),str(height*7//10),str(width//2),str(height*4//10),'400')
         time.sleep(.5)
     raise AssertionError(f'Missing {text!r}; visible: {[n.get("text") for n in current if n.get("text")]}')
 
 def tap(text):
-    n = wait_text(text)
+    print(f"Opening {text}",flush=True)
+    n = wait_text(text,scroll=True)
     x1,y1,x2,y2 = map(int,re.findall(r'\d+',n.get('bounds')))
     adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
 
