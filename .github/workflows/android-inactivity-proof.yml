@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/android-inactivity-proof.yml
+      - tools/verify-inactivity-emulator.sh
   workflow_dispatch:
 
 permissions:
