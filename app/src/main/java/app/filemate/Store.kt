@@ -15,7 +15,7 @@ data class HistoryItem(val title: String, val detail: String, val time: Long)
 data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
     val fileCount: Int)
 
-class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3) {
+class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -29,6 +29,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
         db.execSQL("CREATE TABLE history(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT NOT NULL,detail TEXT NOT NULL,time INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE state(key TEXT PRIMARY KEY,value TEXT NOT NULL)")
         createCleanupTables(db)
+        createFileActionTable(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         db.beginTransaction()
@@ -40,6 +41,7 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
                 db.execSQL("CREATE INDEX files_project_id ON files(project_id)")
             }
             if(old < 3) createCleanupTables(db)
+            if(old < 4) createFileActionTable(db)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -67,14 +69,18 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
         buildList { while(c.moveToNext()) add(detectedFile(c)) }
     }
     @Synchronized fun needsSorting(): List<DetectedFile> = readableDatabase.rawQuery("""
-        SELECT o.id,o.name,o.path,o.size,o.detected,o.source,o.confidence,o.reason,o.via,
+        SELECT COALESCE(o.id,-f.rowid),COALESCE(o.name,c.name,f.path),f.path,f.size,
+               COALESCE(o.detected,c.modified,f.modified),o.source,COALESCE(o.confidence,'Unknown'),
+               COALESCE(o.reason,'Found during a deliberate phone scan'),COALESCE(o.via,'Phone scan'),
                f.project_id,p.name,f.project_confidence
-        FROM observations o
-        JOIN files f ON f.path=o.path
+        FROM files f
         LEFT JOIN projects p ON p.id=f.project_id
+        LEFT JOIN observations o ON o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=f.path)
+        LEFT JOIN cleanup_entries c ON c.path=f.path
         WHERE f.project_id IS NULL
-          AND o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=o.path)
-        ORDER BY CASE o.confidence WHEN 'Low' THEN 0 WHEN 'Medium' THEN 1 ELSE 2 END,o.detected DESC
+          AND (o.id IS NOT NULL OR c.path IS NOT NULL)
+        ORDER BY CASE COALESCE(o.confidence,'Unknown') WHEN 'Low' THEN 0 WHEN 'Unknown' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END,
+                 COALESCE(o.detected,c.modified,f.modified) DESC
     """.trimIndent(),null).use { c -> buildList {
         while(c.moveToNext()) add(detectedFile(c))
     } }
@@ -137,8 +143,10 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
             """.trimIndent(),arrayOf(id.toString())).use {
                 if(it.moveToFirst()) it.getString(0) to it.getInt(1) else throw IllegalArgumentException("Project no longer exists")
             }
+            db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE root='Downloads' AND path IN (SELECT path FROM files WHERE project_id=?)",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,id))
             db.update("files",ContentValues().apply { put("project_confidence","Unassigned") },"project_id=?",arrayOf(id.toString()))
             db.delete("projects","id=?",arrayOf(id.toString()))
+            refreshCleanupCounts(db)
             val detail = if(project.second == 0) project.first else "${project.first}. ${project.second} files returned to Needs Sorting."
             insertHistory(db,"Project deleted",detail,System.currentTimeMillis())
             db.setTransactionSuccessful()
@@ -174,6 +182,8 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
             require(changed > 0) { "The selected files are no longer available" }
             val now = System.currentTimeMillis()
             db.update("projects",ContentValues().apply { put("updated",now) },"id=?",arrayOf(projectId.toString()))
+            distinctPaths.forEach { db.execSQL("UPDATE cleanup_entries SET flags=flags & ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD.inv(),it)) }
+            refreshCleanupCounts(db)
             insertHistory(db,"Assigned to $projectName",if(changed == 1) "1 file" else "$changed files",now)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
@@ -189,8 +199,10 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
                 changed += db.update("files",ContentValues().apply {
                     putNull("project_id");put("project_confidence","Unassigned")
                 },"path=? AND project_id IS NOT NULL",arrayOf(path))
+                db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE path=? AND root='Downloads'",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,path))
             }
             require(changed > 0) { "The selected files were already unassigned" }
+            refreshCleanupCounts(db)
             insertHistory(db,"Returned to Needs Sorting",if(changed == 1) "1 file" else "$changed files",System.currentTimeMillis())
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
@@ -250,6 +262,74 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
             while(c.moveToNext()) add(CleanupEntry(c.getString(0),c.getString(1),c.getLong(2),c.getLong(3),c.getString(4),c.getInt(5),c.getString(6)))
         } }
     }
+    @Synchronized fun beginFileAction(plan: OrganisePlan): Long {
+        val db = writableDatabase
+        val previous = db.rawQuery("SELECT project_id,project_confidence FROM files WHERE path=?",arrayOf(plan.sourcePath)).use {
+            if(it.moveToFirst()) (if(it.isNull(0)) null else it.getLong(0)) to it.getString(1) else null to "Unassigned"
+        }
+        return db.insertOrThrow("file_actions",null,ContentValues().apply {
+            put("source_path",plan.sourcePath);put("target_path",plan.targetPath)
+            put("source_name",plan.sourceName);put("target_name",plan.targetName);put("source_root",plan.sourceRoot)
+            put("expected_size",plan.expectedSize);put("expected_modified",plan.expectedModified);put("hash",plan.hash)
+            put("project_id",plan.projectId);put("project_name",plan.projectName)
+            if(previous.first == null) putNull("previous_project_id") else put("previous_project_id",previous.first)
+            put("previous_project_confidence",previous.second);put("created",System.currentTimeMillis());put("status","pending")
+        })
+    }
+    @Synchronized fun completeFileAction(id: Long, size: Long, modified: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val action = fileAction(db,id) ?: throw IllegalArgumentException("File action no longer exists")
+            if(action.status == "applied") { db.setTransactionSuccessful();return }
+            require(action.status == "pending" || action.status == "review") { "File action cannot be completed" }
+            db.delete("files","path=?",arrayOf(action.targetPath))
+            db.delete("files","path=?",arrayOf(action.sourcePath))
+            db.insertOrThrow("files",null,ContentValues().apply {
+                put("path",action.targetPath);put("size",size);put("modified",modified)
+                if(action.projectId == null) { putNull("project_id");put("project_confidence","Unassigned") }
+                else { put("project_id",action.projectId);put("project_confidence","Confirmed") }
+            })
+            db.update("observations",ContentValues().apply { put("path",action.targetPath);put("name",action.targetName) },"path=?",arrayOf(action.sourcePath))
+            db.delete("cleanup_entries","path=?",arrayOf(action.targetPath))
+            db.execSQL("UPDATE cleanup_entries SET path=?,name=?,root='Documents',flags=flags & ? WHERE path=?",arrayOf(action.targetPath,action.targetName,CleanupFlags.UNSORTED_DOWNLOAD.inv(),action.sourcePath))
+            db.update("file_actions",ContentValues().apply { put("status","applied");putNull("error") },"id=?",arrayOf(id.toString()))
+            refreshCleanupCounts(db)
+            insertHistory(db,"File organised","${action.sourceName} → ${action.targetName} in ${action.projectName}",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun completeFileUndo(id: Long, size: Long, modified: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val action = fileAction(db,id) ?: throw IllegalArgumentException("File action no longer exists")
+            require(action.status == "undo_pending") { "File action is not available to undo" }
+            db.delete("files","path=?",arrayOf(action.sourcePath))
+            db.delete("files","path=?",arrayOf(action.targetPath))
+            db.insertOrThrow("files",null,ContentValues().apply {
+                put("path",action.sourcePath);put("size",size);put("modified",modified)
+                if(action.previousProjectId == null) { putNull("project_id");put("project_confidence","Unassigned") }
+                else { put("project_id",action.previousProjectId);put("project_confidence",action.previousProjectConfidence) }
+            })
+            db.update("observations",ContentValues().apply { put("path",action.sourcePath);put("name",action.sourceName) },"path=?",arrayOf(action.targetPath))
+            db.delete("cleanup_entries","path=?",arrayOf(action.sourcePath))
+            db.execSQL("UPDATE cleanup_entries SET path=?,name=?,root=? WHERE path=?",arrayOf(action.sourcePath,action.sourceName,action.sourceRoot,action.targetPath))
+            if(action.previousProjectId == null && action.sourceRoot == "Downloads") db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,action.sourcePath))
+            db.update("file_actions",ContentValues().apply { put("status","undone");putNull("error") },"id=?",arrayOf(id.toString()))
+            refreshCleanupCounts(db)
+            insertHistory(db,"File change undone","${action.targetName} returned to its original location.",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+    @Synchronized fun failFileAction(id: Long, message: String) { updateFileActionStatus(id,"failed",message) }
+    @Synchronized fun reviewFileAction(id: Long, message: String) { updateFileActionStatus(id,"review",message) }
+    @Synchronized fun beginFileUndo(id: Long) {
+        require(writableDatabase.update("file_actions",ContentValues().apply { put("status","undo_pending");putNull("error") },"id=? AND status='applied'",arrayOf(id.toString())) == 1) { "File action is not available to undo" }
+    }
+    @Synchronized fun cancelFileUndo(id: Long, message: String) { updateFileActionStatus(id,"applied",message) }
+    @Synchronized fun pendingFileActions(): List<FileActionRecord> = fileActions("WHERE status IN ('pending','review','undo_pending')")
+    @Synchronized fun fileActions(): List<FileActionRecord> = fileActions("WHERE status IN ('applied','undone','review','undo_pending') ORDER BY id DESC LIMIT 100")
     /** Deduplication and record insertion are one transaction; catch-up and live events may race. */
     @Synchronized fun observe(file: File, finding: Finding, via: String, baseline: Boolean = false): Boolean {
         if (!file.isFile || FileRules.temporary(file.name)) return false
@@ -298,6 +378,36 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 3
         db.execSQL("CREATE INDEX cleanup_entries_flags ON cleanup_entries(flags)")
         db.execSQL("CREATE INDEX cleanup_entries_hash ON cleanup_entries(hash)")
         db.execSQL("CREATE TABLE selected_folders(uri TEXT PRIMARY KEY,name TEXT NOT NULL,added INTEGER NOT NULL)")
+    }
+    private fun createFileActionTable(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE file_actions(id INTEGER PRIMARY KEY AUTOINCREMENT,source_path TEXT NOT NULL,target_path TEXT NOT NULL,source_name TEXT NOT NULL,target_name TEXT NOT NULL,source_root TEXT NOT NULL,expected_size INTEGER NOT NULL,expected_modified INTEGER NOT NULL,hash TEXT,project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,project_name TEXT NOT NULL,previous_project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,previous_project_confidence TEXT NOT NULL,created INTEGER NOT NULL,status TEXT NOT NULL,error TEXT)")
+        db.execSQL("CREATE INDEX file_actions_status ON file_actions(status)")
+    }
+    private fun fileActions(where: String): List<FileActionRecord> = readableDatabase.rawQuery("""
+        SELECT id,source_path,target_path,source_name,target_name,source_root,expected_size,expected_modified,
+               hash,project_id,project_name,previous_project_id,previous_project_confidence,created,status,error
+        FROM file_actions $where
+    """.trimIndent(),null).use { c -> buildList { while(c.moveToNext()) add(fileAction(c)) } }
+    private fun fileAction(db: SQLiteDatabase, id: Long): FileActionRecord? = db.rawQuery("""
+        SELECT id,source_path,target_path,source_name,target_name,source_root,expected_size,expected_modified,
+               hash,project_id,project_name,previous_project_id,previous_project_confidence,created,status,error
+        FROM file_actions WHERE id=?
+    """.trimIndent(),arrayOf(id.toString())).use { if(it.moveToFirst()) fileAction(it) else null }
+    private fun fileAction(c: android.database.Cursor) = FileActionRecord(
+        c.getLong(0),c.getString(1),c.getString(2),c.getString(3),c.getString(4),c.getString(5),c.getLong(6),c.getLong(7),c.getString(8),
+        if(c.isNull(9)) null else c.getLong(9),c.getString(10),if(c.isNull(11)) null else c.getLong(11),c.getString(12),c.getLong(13),c.getString(14),c.getString(15)
+    )
+    private fun updateFileActionStatus(id: Long, status: String, message: String) {
+        writableDatabase.update("file_actions",ContentValues().apply { put("status",status);put("error",message) },"id=?",arrayOf(id.toString()))
+    }
+    private fun refreshCleanupCounts(db: SQLiteDatabase) {
+        val id = db.rawQuery("SELECT MAX(id) FROM cleanup_scans",null).use { if(it.moveToFirst() && !it.isNull(0)) it.getLong(0) else null } ?: return
+        fun count(flag: Int) = db.rawQuery("SELECT COUNT(*) FROM cleanup_entries WHERE (flags & ?) != 0",arrayOf(flag.toString())).use { it.moveToFirst();it.getInt(0) }
+        db.update("cleanup_scans",ContentValues().apply {
+            put("likely_ai",count(CleanupFlags.LIKELY_AI));put("unsorted_downloads",count(CleanupFlags.UNSORTED_DOWNLOAD))
+            put("large_files",count(CleanupFlags.LARGE));put("old_files",count(CleanupFlags.OLD));put("archives",count(CleanupFlags.ARCHIVE))
+            put("duplicate_files",count(CleanupFlags.DUPLICATE))
+        },"id=?",arrayOf(id.toString()))
     }
 }
 

@@ -59,4 +59,12 @@ class RulesTest {
         assertTrue(archive and CleanupFlags.OLD != 0)
         assertTrue(archive and CleanupFlags.ARCHIVE != 0)
     }
+    @Test fun tidyNamesStayFilesystemSafeAndKeepTheExtension() {
+        val name = FileNaming.tidy("Tax / 2026","invoice: final.PDF",1_000_000_000_000)
+        assertFalse(name.contains('/'))
+        assertFalse(name.contains(':'))
+        assertTrue(name.startsWith("Tax_2026_"))
+        assertTrue(name.endsWith(".PDF"))
+        assertFalse(FileNaming.folder("Tax / 2026").contains('/'))
+    }
 }

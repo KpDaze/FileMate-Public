@@ -80,6 +80,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     var cleanupFlag by rememberSaveable { mutableIntStateOf(0) }
     var cleanupTitle by rememberSaveable { mutableStateOf("All scanned files") }
     var cleanupDetail by remember { mutableStateOf<CleanupEntry?>(null) }
+    var cleanupSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var organiseEntries by remember { mutableStateOf<List<CleanupEntry>>(emptyList()) }
+    var organisePlans by remember { mutableStateOf<List<OrganisePlan>>(emptyList()) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -104,6 +107,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val cleanupSummary by produceState<CleanupSummary?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.cleanupSummary() } }
     val cleanupEntries by produceState(emptyList<CleanupEntry>(),revision,cleanupFlag) { value = withContext(Dispatchers.IO) { app.store.cleanupEntries(cleanupFlag) } }
     val selectedFolders by produceState(emptyList<SelectedFolder>(),revision) { value = withContext(Dispatchers.IO) { app.store.selectedFolders() } }
+    val fileActions by produceState(emptyList<FileActionRecord>(),revision) { value = withContext(Dispatchers.IO) { app.store.fileActions() } }
     val ignored by produceState("0",revision) { value = withContext(Dispatchers.IO) { app.store.state("ignored") ?: "0" } }
     val lastCheck by produceState<String?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.state("last_check") } }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
@@ -121,6 +125,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     LaunchedEffect(needsSorting) {
         val available = needsSorting.mapTo(mutableSetOf()) { it.path }
         sortingSelection = sortingSelection.intersect(available)
+    }
+    LaunchedEffect(cleanupEntries,page) {
+        if(page == "Cleanup list") cleanupSelection = cleanupSelection.intersect(cleanupEntries.mapTo(mutableSetOf()) { it.path })
     }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _,event ->
@@ -165,7 +172,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2C",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2D",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
@@ -346,7 +353,31 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                     "Cleanup list" -> {
                         item { Title(cleanupTitle, "Review only. Nothing here is selected for deletion.") }
                         if(cleanupEntries.isEmpty()) item { InfoCard("No matches", "Run the scan again after files on the phone change.",Icons.Outlined.CheckCircle) {} }
-                        items(cleanupEntries,key = { it.path }) { entry -> CleanupRow(entry) { cleanupDetail = entry } }
+                        if(cleanupEntries.isNotEmpty()) item {
+                            Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
+                                Text("${cleanupSelection.size} selected",fontWeight = FontWeight.SemiBold,modifier = Modifier.weight(1f))
+                                TextButton(onClick = { cleanupSelection = if(cleanupSelection.size == cleanupEntries.size) emptySet() else cleanupEntries.mapTo(mutableSetOf()) { it.path } }) {
+                                    Text(if(cleanupSelection.size == cleanupEntries.size) "Clear" else "Select all")
+                                }
+                            }
+                        }
+                        items(cleanupEntries,key = { it.path }) { entry ->
+                            CleanupRow(entry,entry.path in cleanupSelection,toggle = {
+                                cleanupSelection = if(entry.path in cleanupSelection) cleanupSelection - entry.path else cleanupSelection + entry.path
+                            },inspect = { cleanupDetail = entry })
+                        }
+                        if(cleanupEntries.isNotEmpty()) item {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                OutlinedButton(enabled = cleanupSelection.isNotEmpty() && projects.isNotEmpty(),onClick = { assignmentPaths = cleanupSelection.toList() },modifier = Modifier.fillMaxWidth()) {
+                                    Icon(Icons.Outlined.Folder,null);Spacer(Modifier.width(8.dp));Text("Assign selected to project")
+                                }
+                                Button(enabled = cleanupSelection.isNotEmpty() && projects.isNotEmpty() && !monitor.running,onClick = { organiseEntries = cleanupEntries.filter { it.path in cleanupSelection } },modifier = Modifier.fillMaxWidth()) {
+                                    Icon(Icons.Outlined.DriveFileMove,null);Spacer(Modifier.width(8.dp));Text("Preview move or rename")
+                                }
+                                if(projects.isEmpty()) Text("Create a project before assigning or organising files.",fontSize = 12.sp,color = Muted)
+                                if(monitor.running) Text("Stop AI monitoring before moving files so FileMate doesn't mistake its own changes for new downloads.",fontSize = 12.sp,color = Muted)
+                            }
+                        }
                     }
                     "Recent" -> {
                         item { Title("Recent", "Likely AI files found on your phone.") }
@@ -356,6 +387,20 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                     }
                     "Activity" -> {
                         item { Title("Activity", "A local record of FileMate's work.") }
+                        if(fileActions.isNotEmpty()) item { Text("File changes and undo",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        items(fileActions,key = { "action-${it.id}" }) { action ->
+                            OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("${action.sourceName} → ${action.targetName}",fontWeight = FontWeight.SemiBold,maxLines = 2,overflow = TextOverflow.Ellipsis)
+                                Text("${action.projectName} · ${action.status.replaceFirstChar { it.uppercase() }}",fontSize = 12.sp,color = Muted)
+                                action.error?.let { Text(it,fontSize = 12.sp,color = MaterialTheme.colorScheme.error) }
+                                if(action.status == "applied") TextButton(onClick = {
+                                    uiScope.launch {
+                                        val problem = withContext(Dispatchers.IO) { FileOrganiser(app.store).undo(action) }
+                                        if(problem == null) app.changed() else error = problem
+                                    }
+                                }) { Icon(Icons.Outlined.Undo,null);Spacer(Modifier.width(6.dp));Text("Undo") }
+                            } }
+                        }
                         item { InfoCard(if(checking) "Checking for missed files…" else "Catch-up",lastCheck?.toLongOrNull()?.let { "Last successful check: ${time(it)}" } ?: "The first check indexes existing files without moving them.",Icons.Outlined.Refresh) {
                             TextButton(enabled = filesAllowed && !checking,onClick = { app.scope.launch { app.reconcile() } }) { Text("Check now") }
                         } }
@@ -402,7 +447,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
-                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Projects and confirmed assignments are stored locally. No files are moved, renamed, uploaded or deleted in Stage 2B.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Phone scans change nothing; reviewed moves and tidy renames are recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
                         item { Text("FileMate ${BuildConfig.VERSION_NAME} · Android 11 or newer",fontSize = 12.sp,color = Muted) }
                     }
                 }
@@ -473,10 +518,29 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         try {
             withContext(Dispatchers.IO) { app.store.assignFiles(assignmentPaths,projectId) }
             sortingSelection = sortingSelection - assignmentPaths.toSet()
+            cleanupSelection = cleanupSelection - assignmentPaths.toSet()
             assignmentPaths = emptyList()
             app.changed()
             null
         } catch(e: Exception) { e.message ?: "FileMate couldn't assign the selected files." }
+    }
+    if(organiseEntries.isNotEmpty()) OrganiseOptionsDialog(organiseEntries.size,projects,onDismiss = { organiseEntries = emptyList() }) { projectId,tidy ->
+        val project = projects.firstOrNull { it.id == projectId }
+        if(project == null) "Project no longer exists."
+        else {
+            organisePlans = withContext(Dispatchers.IO) { FileOrganiser(app.store).plans(organiseEntries,project,tidy) }
+            organiseEntries = emptyList()
+            null
+        }
+    }
+    if(organisePlans.isNotEmpty()) OrganisePreviewDialog(organisePlans,onDismiss = { organisePlans = emptyList() }) { included ->
+        val result = withContext(Dispatchers.IO) { FileOrganiser(app.store).apply(included) }
+        organisePlans = emptyList()
+        cleanupSelection = emptySet()
+        app.changed()
+        if(result.failed > 0 || result.skipped > 0) {
+            error = "${result.applied} applied, ${result.skipped} skipped, ${result.failed} failed. " + result.messages.take(3).joinToString(" ")
+        }
     }
     deleteProject?.let { project -> AlertDialog(
         onDismissRequest = { deleteProject = null },
@@ -523,9 +587,10 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         }
     }
 }
-@Composable private fun CleanupRow(entry: CleanupEntry, action: () -> Unit) {
-    OutlinedCard(onClick = action,modifier = Modifier.fillMaxWidth()) {
+@Composable private fun CleanupRow(entry: CleanupEntry, selected: Boolean, toggle: () -> Unit, inspect: () -> Unit) {
+    OutlinedCard(onClick = toggle,modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp),verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Checkbox(checked = selected,onCheckedChange = { toggle() })
             Icon(if(entry.flags and CleanupFlags.DUPLICATE != 0) Icons.Outlined.ContentCopy else Icons.Outlined.InsertDriveFile,null,tint = Blue)
             Column(Modifier.weight(1f)) {
                 Text(entry.name,fontWeight = FontWeight.SemiBold,maxLines = 2,overflow = TextOverflow.Ellipsis)
@@ -533,7 +598,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 val reasons = cleanupReasons(entry)
                 if(reasons.isNotEmpty()) Text(reasons.joinToString(" · "),fontSize = 11.sp,color = Muted,maxLines = 2,overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Outlined.ChevronRight,null,tint = Muted)
+            IconButton(onClick = inspect) { Icon(Icons.Outlined.Info,"Review ${entry.name}",tint = Muted) }
         }
     }
 }
@@ -559,6 +624,83 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 if(message == null) onDismiss()
             }
         }) { Text(if(saving) "Saving…" else "Save") } }
+    )
+}
+@Composable private fun OrganiseOptionsDialog(fileCount: Int, projects: List<Project>, onDismiss: () -> Unit, preview: suspend (Long,Boolean) -> String?) {
+    var selectedId by remember { mutableStateOf<Long?>(null) }
+    var tidyNames by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if(!working) onDismiss() },
+        title = { Text("Organise $fileCount ${if(fileCount == 1) "file" else "files"}") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Choose the project folder. The next screen shows every proposed path before anything changes.",fontSize = 13.sp,color = Muted)
+            LazyColumn(Modifier.heightIn(max = 260.dp)) { items(projects,key = { it.id }) { project ->
+                Row(Modifier.fillMaxWidth().clickable { selectedId = project.id;message = null }.padding(vertical = 7.dp),verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selectedId == project.id,onClick = { selectedId = project.id;message = null })
+                    Text(project.name,modifier = Modifier.weight(1f),maxLines = 2,overflow = TextOverflow.Ellipsis)
+                }
+            } }
+            Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Use tidy filenames",fontWeight = FontWeight.SemiBold);Text("Project_description_date.ext",fontSize = 11.sp,color = Muted) }
+                Switch(checked = tidyNames,onCheckedChange = { tidyNames = it })
+            }
+            if(!tidyNames) Text("Current filenames will be kept.",fontSize = 12.sp,color = Muted)
+            message?.let { Text(it,color = MaterialTheme.colorScheme.error,fontSize = 12.sp) }
+        } },
+        dismissButton = { TextButton(enabled = !working,onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(enabled = selectedId != null && !working,onClick = {
+            val id = selectedId ?: return@Button
+            scope.launch {
+                working = true
+                message = preview(id,tidyNames)
+                working = false
+                if(message == null) onDismiss()
+            }
+        }) { Text(if(working) "Preparing…" else "Preview") } }
+    )
+}
+@Composable private fun OrganisePreviewDialog(plans: List<OrganisePlan>, onDismiss: () -> Unit, apply: suspend (List<OrganisePlan>) -> Unit) {
+    val supported = remember(plans) { plans.filter { it.supported }.mapTo(mutableSetOf()) { it.sourcePath } }
+    var included by remember(plans) { mutableStateOf<Set<String>>(supported) }
+    var working by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val personal = plans.any { it.sourceRoot == "Camera" || it.sourceRoot == "Pictures" }
+    AlertDialog(
+        onDismissRequest = { if(!working) onDismiss() },
+        title = { Text("Review file changes") },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Text("${included.size} of ${plans.size} included. Existing files are never overwritten.",fontSize = 13.sp,color = Muted)
+            if(personal) Text("This selection includes personal images. FileMate selected none of them automatically.",fontSize = 12.sp,color = MaterialTheme.colorScheme.error)
+            LazyColumn(Modifier.heightIn(max = 390.dp)) {
+                items(plans,key = { it.sourcePath }) { plan ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp),verticalAlignment = Alignment.Top) {
+                        Checkbox(checked = plan.sourcePath in included,enabled = plan.supported,onCheckedChange = { checked ->
+                            included = if(checked) included + plan.sourcePath else included - plan.sourcePath
+                        })
+                        Column(Modifier.weight(1f)) {
+                            Text(plan.sourceName,fontWeight = FontWeight.SemiBold,maxLines = 2,overflow = TextOverflow.Ellipsis)
+                            if(plan.supported) {
+                                Text("→ ${plan.targetName}",fontSize = 12.sp,color = Blue,maxLines = 2,overflow = TextOverflow.Ellipsis)
+                                Text(plan.targetPath.substringBeforeLast('/'),fontSize = 10.sp,color = Muted,maxLines = 2,overflow = TextOverflow.Ellipsis)
+                            } else Text(plan.note,fontSize = 11.sp,color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
+            Text("Applied moves and renames appear in Activity with Undo.",fontSize = 12.sp,color = Muted)
+        } },
+        dismissButton = { TextButton(enabled = !working,onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { Button(enabled = included.isNotEmpty() && !working,onClick = {
+            scope.launch {
+                working = true
+                apply(plans.filter { it.sourcePath in included })
+                working = false
+                onDismiss()
+            }
+        }) { Text(if(working) "Applying…" else "Apply ${included.size}") } }
     )
 }
 @Composable private fun AssignmentDialog(projects: List<Project>, fileCount: Int, onDismiss: () -> Unit, assign: suspend (Long) -> String?) {

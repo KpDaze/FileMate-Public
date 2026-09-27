@@ -26,6 +26,7 @@ class FileMateApp : Application() {
     override fun onCreate() {
         super.onCreate(); store = Store(this)
         scope.launch {
+            FileOrganiser(store).recoverPending()
             if(store.state("session_active") == "true") {
                 store.history("Previous session interrupted", "Android ended the previous process. Reopening FileMate checks for missed files.")
                 store.state("session_active","false"); changed()
