@@ -31,6 +31,14 @@ Cleanup scanning writes only local metadata. It does not move, rename or delete 
 
 The Android proof used disposable fixture files rather than Kel's personal folders. It is source-level and emulator evidence, not physical-phone permission or usability acceptance.
 
+## Stage 2 safeguard repair — 27 September 2026, verification pending
+
+Kel authorised corrections enforcing the handover's existing no-overwrite and changed-file/Undo requirements before Gallery work. Source now uses exclusive destination creation (`CREATE_NEW`) instead of an atomic rename that can replace a late-arriving file. Moves copy, flush and verify content before removing the source. This requires temporary free space for the new copy. Copy/check failures retain the source and any partial copy for review; recovery does not automatically remove either copy.
+
+Every supported move preview now computes SHA-256, including unique files that the duplicate scan did not hash. Apply, Undo and interrupted-operation recovery check the recorded content. Older actions lacking a hash are refused for Undo instead of guessing a baseline. Ambiguous actions remain in review. The existing schema version 4 and historical records are preserved.
+
+Ten new JVM filesystem tests and expanded disposable Android fixtures cover destination collisions, same-size edits, legacy records, interrupted copies and recovery. Build/lint/JVM/emulator verification is pending for this repair; previous Stage 2 results do not prove these new cases. No new phone APK has been delivered, and Stage 3A remains unstarted.
+
 ## Artifact and signing boundary
 
 The corrected personal 0.1.1 APK has SHA-256 `e64e30bf6130ad338a421f3c387e0cdb771f41ce43f7ba1b5ccd0d72023fd9c1`. Its signature, certificate, 16 KB ZIP alignment and packaged entries were verified. Private signing and recovery records remain outside this public repository. Future phone APKs must use the same backed-up personal identity to update the installed copy.

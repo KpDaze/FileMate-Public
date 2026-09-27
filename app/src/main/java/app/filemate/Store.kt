@@ -328,7 +328,10 @@ class Store(context: Context) : SQLiteOpenHelper(context, "filemate.db", null, 4
         require(writableDatabase.update("file_actions",ContentValues().apply { put("status","undo_pending");putNull("error") },"id=? AND status='applied'",arrayOf(id.toString())) == 1) { "File action is not available to undo" }
     }
     @Synchronized fun cancelFileUndo(id: Long, message: String) { updateFileActionStatus(id,"applied",message) }
-    @Synchronized fun pendingFileActions(): List<FileActionRecord> = fileActions("WHERE status IN ('pending','review','undo_pending')")
+    // Review is terminal until a deliberate future recovery UI: never reinterpret an
+    // interrupted Undo as a forward move, or trust a replacement file on later restarts.
+    @Synchronized fun pendingFileActions(): List<FileActionRecord> = fileActions("WHERE status IN ('pending','undo_pending')")
+    @Synchronized fun fileAction(id: Long): FileActionRecord? = fileAction(readableDatabase,id)
     @Synchronized fun fileActions(): List<FileActionRecord> = fileActions("WHERE status IN ('applied','undone','review','undo_pending') ORDER BY id DESC LIMIT 100")
     /** Deduplication and record insertion are one transaction; catch-up and live events may race. */
     @Synchronized fun observe(file: File, finding: Finding, via: String, baseline: Boolean = false): Boolean {

@@ -2,13 +2,10 @@ package app.filemate
 
 import android.os.Environment
 import java.io.File
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import java.nio.file.FileAlreadyExistsException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.security.MessageDigest
 
 data class OrganisePlan(
     val sourcePath: String,
@@ -61,7 +58,9 @@ object FileNaming {
     private fun safe(raw: String, limit: Int): String = unsafe.replace(raw,"_").trim().let { spaces.replace(it," ") }.trim('.',' ').take(limit)
 }
 
-class FileOrganiser(private val store: Store) {
+class FileOrganiser(private val store: Store, private val transfer: VerifiedFileTransfer = VerifiedFileTransfer()) {
+    // UI requests and startup recovery use separate instances; serialise journal transitions.
+    companion object { private val actionLock = Any() }
     @Suppress("DEPRECATION")
     fun plans(entries: List<CleanupEntry>, project: Project, tidyNames: Boolean): List<OrganisePlan> {
         val sharedRoot = Environment.getExternalStorageDirectory().canonicalFile
@@ -73,21 +72,26 @@ class FileOrganiser(private val store: Store) {
             val requestedName = if(tidyNames) FileNaming.tidy(project.name,entry.name,entry.modified) else entry.name
             val target = uniqueTarget(destination,requestedName,reserved)
             val same = source?.path == target.path
-            val supported = insideShared && source?.isFile == true && !same
+            val fingerprint = if(insideShared && source?.isFile == true && !same) ContentFingerprint.read(source) else null
+            val unchanged = fingerprint != null && fingerprint.size == entry.size &&
+                (entry.modified <= 0 || fingerprint.modified == entry.modified) &&
+                (entry.hash == null || fingerprint.hash == entry.hash)
+            val supported = insideShared && source?.isFile == true && !same && unchanged
             val note = when {
                 !entry.path.startsWith('/') -> "This selected-folder provider supports project assignment here, but physical moves are not enabled."
                 !insideShared -> "The source is outside Android shared storage."
                 source?.isFile != true -> "The file is no longer available."
                 same -> "Already organised with this name."
+                !unchanged -> "This file changed or could not be fingerprinted. Scan again before moving it."
                 entry.root == "Camera" || entry.root == "Pictures" -> "Personal image selected deliberately; FileMate will not choose it automatically."
                 else -> if(tidyNames) "Move and use the reviewed tidy name." else "Move and keep the current filename."
             }
-            OrganisePlan(entry.path,target.path,entry.name,target.name,entry.root,entry.size,entry.modified,entry.hash,
+            OrganisePlan(entry.path,target.path,entry.name,target.name,entry.root,entry.size,entry.modified,fingerprint?.hash,
                 project.id,project.name,supported,note)
         }
     }
 
-    fun apply(plans: List<OrganisePlan>): OrganiseResult {
+    fun apply(plans: List<OrganisePlan>): OrganiseResult = synchronized(actionLock) {
         var applied = 0
         var skipped = 0
         var failed = 0
@@ -99,8 +103,8 @@ class FileOrganiser(private val store: Store) {
             if(!source.isFile || source.length() != plan.expectedSize || (plan.expectedModified > 0 && source.lastModified() != plan.expectedModified)) {
                 failed++;messages += "${plan.sourceName}: changed since the scan; scan again.";return@forEach
             }
-            if(plan.hash != null && sha256(source) != plan.hash) {
-                failed++;messages += "${plan.sourceName}: content changed since the scan; scan again.";return@forEach
+            if(!ContentFingerprint.matches(source,plan.expectedSize,plan.hash)) {
+                failed++;messages += "${plan.sourceName}: content changed or its original fingerprint is unavailable; preview again.";return@forEach
             }
             if(target.exists()) { failed++;messages += "${plan.targetName}: a file now uses this name; preview again.";return@forEach }
             if(target.parentFile?.mkdirs() == false && target.parentFile?.isDirectory != true) {
@@ -108,53 +112,58 @@ class FileOrganiser(private val store: Store) {
             }
             val actionId = store.beginFileAction(plan)
             try {
-                try { Files.move(source.toPath(),target.toPath(),StandardCopyOption.ATOMIC_MOVE) }
-                catch(_: AtomicMoveNotSupportedException) { Files.move(source.toPath(),target.toPath()) }
+                transfer.move(source,target,plan.expectedSize,plan.hash)
                 if(!target.isFile || source.exists()) throw IllegalStateException("Android did not finish the move")
                 store.completeFileAction(actionId,target.length(),target.lastModified())
                 applied++
             } catch(e: Exception) {
-                if(source.isFile && !target.exists()) store.failFileAction(actionId,e.message ?: "Move failed")
+                if(e is FileAlreadyExistsException || (source.isFile && !target.exists())) store.failFileAction(actionId,e.message ?: "Move failed")
                 else store.reviewFileAction(actionId,e.message ?: "Move needs review")
                 failed++;messages += "${plan.sourceName}: ${e.message ?: "move failed"}"
             }
         }
-        return OrganiseResult(applied,skipped,failed,messages)
+        OrganiseResult(applied,skipped,failed,messages)
     }
 
-    fun undo(action: FileActionRecord): String? {
-        if(action.status != "applied") return "This change is not available to undo."
+    fun undo(action: FileActionRecord): String? = synchronized(actionLock) {
+        val recorded = store.fileAction(action.id) ?: return@synchronized "This change is no longer available."
+        // A second tap must not act on a stale record after the first Undo completes.
+        if(recorded != action || action.status != "applied") return@synchronized "This change is not available to undo."
+        if(action.hash == null) return@synchronized "This older move has no saved content fingerprint. FileMate cannot safely verify Undo, so nothing was changed."
         val current = File(action.targetPath)
         val original = File(action.sourcePath)
-        if(!current.isFile) return "The organised file is no longer at the recorded location."
-        if(original.exists()) return "The original location now contains another file. Nothing was overwritten."
-        if(current.length() != action.expectedSize) return "The file changed after it was organised. Undo was stopped."
-        if(action.hash != null && sha256(current) != action.hash) return "The file content changed after it was organised. Undo was stopped."
-        return try {
-            if(original.parentFile?.mkdirs() == false && original.parentFile?.isDirectory != true) return "The original folder couldn't be restored."
+        if(!current.isFile) return@synchronized "The organised file is no longer at the recorded location."
+        if(original.exists()) return@synchronized "The original location now contains another file. Nothing was overwritten."
+        if(!ContentFingerprint.matches(current,action.expectedSize,action.hash)) return@synchronized "The file content changed or could not be verified. Undo was stopped."
+        try {
+            if(original.parentFile?.mkdirs() == false && original.parentFile?.isDirectory != true) return@synchronized "The original folder couldn't be restored."
             store.beginFileUndo(action.id)
-            try { Files.move(current.toPath(),original.toPath(),StandardCopyOption.ATOMIC_MOVE) }
-            catch(_: AtomicMoveNotSupportedException) { Files.move(current.toPath(),original.toPath()) }
+            transfer.move(current,original,action.expectedSize,action.hash)
             if(!original.isFile || current.exists()) throw IllegalStateException("Android did not finish the undo")
             store.completeFileUndo(action.id,original.length(),original.lastModified())
             null
         } catch(e: Exception) {
-            if(current.isFile && !original.exists()) store.cancelFileUndo(action.id,e.message ?: "Undo did not start")
+            if(e is FileAlreadyExistsException || (current.isFile && !original.exists())) store.cancelFileUndo(action.id,e.message ?: "Undo did not start")
+            else store.reviewFileAction(action.id,"Undo interrupted. Both paths need review; no copy was automatically removed.")
             "Undo couldn't finish: ${e.message ?: "unknown error"}"
         }
     }
 
-    fun recoverPending() {
+    fun recoverPending() = synchronized(actionLock) {
         store.pendingFileActions().forEach { action ->
             val source = File(action.sourcePath)
             val target = File(action.targetPath)
+            if(action.hash == null) {
+                store.reviewFileAction(action.id,"No saved content fingerprint. File locations need review; nothing was changed.")
+                return@forEach
+            }
             if(action.status == "undo_pending") when {
-                source.isFile && !target.exists() -> runCatching { store.completeFileUndo(action.id,source.length(),source.lastModified()) }
+                source.isFile && !target.exists() && ContentFingerprint.matches(source,action.expectedSize,action.hash) -> runCatching { store.completeFileUndo(action.id,source.length(),source.lastModified()) }
                     .onFailure { store.reviewFileAction(action.id,it.message ?: "Undo needs review") }
-                target.isFile && !source.exists() -> store.cancelFileUndo(action.id,"Undo did not start")
+                target.isFile && !source.exists() && ContentFingerprint.matches(target,action.expectedSize,action.hash) -> store.cancelFileUndo(action.id,"Undo did not start")
                 else -> store.reviewFileAction(action.id,"Undo locations require review")
             } else when {
-                !source.exists() && target.isFile -> runCatching { store.completeFileAction(action.id,target.length(),target.lastModified()) }
+                !source.exists() && target.isFile && ContentFingerprint.matches(target,action.expectedSize,action.hash) -> runCatching { store.completeFileAction(action.id,target.length(),target.lastModified()) }
                     .onFailure { store.reviewFileAction(action.id,it.message ?: "Moved file needs review") }
                 source.isFile && !target.exists() -> store.failFileAction(action.id,"Move did not start")
                 else -> store.reviewFileAction(action.id,"Move locations require review")
@@ -174,16 +183,4 @@ class FileOrganiser(private val store: Store) {
             number++
         }
     }
-    private fun sha256(file: File): String? = runCatching {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(64 * 1024)
-            while(true) {
-                val read = input.read(buffer)
-                if(read < 0) break
-                if(read > 0) digest.update(buffer,0,read)
-            }
-        }
-        digest.digest().joinToString("") { "%02x".format(it) }
-    }.getOrNull()
 }

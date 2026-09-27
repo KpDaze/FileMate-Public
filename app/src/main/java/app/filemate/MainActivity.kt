@@ -396,7 +396,8 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 if(action.status == "applied") TextButton(onClick = {
                                     uiScope.launch {
                                         val problem = withContext(Dispatchers.IO) { FileOrganiser(app.store).undo(action) }
-                                        if(problem == null) app.changed() else error = problem
+                                        app.changed()
+                                        if(problem != null) error = problem
                                     }
                                 }) { Icon(Icons.Outlined.Undo,null);Spacer(Modifier.width(6.dp));Text("Undo") }
                             } }

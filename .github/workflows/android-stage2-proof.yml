@@ -9,6 +9,7 @@ on:
       - app/src/debug/**
       - app/src/main/java/app/filemate/Cleanup.kt
       - app/src/main/java/app/filemate/FileActions.kt
+      - app/src/main/java/app/filemate/VerifiedFileTransfer.kt
       - app/src/main/java/app/filemate/Store.kt
   workflow_dispatch:
 
