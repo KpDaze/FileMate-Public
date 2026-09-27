@@ -49,10 +49,11 @@ class RulesTest {
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("x".repeat(ProjectNames.MAX_LENGTH + 1)) }
     }
     @Test fun cleanupSuggestionsAreReviewOnlyAndConservativeWithPhotos() {
-        val old = now - 366L * 24 * 60 * 60 * 1000
-        val camera = CleanupRules.flags("photo.jpg","Camera",10,old,false,false,now)
+        val scanNow = 500L * 24 * 60 * 60 * 1000
+        val old = scanNow - 366L * 24 * 60 * 60 * 1000
+        val camera = CleanupRules.flags("photo.jpg","Camera",10,old,false,false,scanNow)
         assertEquals(0,camera and CleanupFlags.OLD)
-        val archive = CleanupRules.flags("ChatGPT-export.zip","Downloads",10,old,false,false,now)
+        val archive = CleanupRules.flags("ChatGPT-export.zip","Downloads",10,old,false,false,scanNow)
         assertTrue(archive and CleanupFlags.LIKELY_AI != 0)
         assertTrue(archive and CleanupFlags.UNSORTED_DOWNLOAD != 0)
         assertTrue(archive and CleanupFlags.OLD != 0)
