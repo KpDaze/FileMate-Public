@@ -77,6 +77,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     var deleteProject by remember { mutableStateOf<Project?>(null) }
     var sortingSelection by remember { mutableStateOf<Set<String>>(emptySet()) }
     var assignmentPaths by remember { mutableStateOf<List<String>>(emptyList()) }
+    var cleanupFlag by rememberSaveable { mutableIntStateOf(0) }
+    var cleanupTitle by rememberSaveable { mutableStateOf("All scanned files") }
+    var cleanupDetail by remember { mutableStateOf<CleanupEntry?>(null) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingPackage by rememberSaveable { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -88,6 +91,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val revision by app.revision.collectAsStateWithLifecycle()
     val monitor by app.monitor.collectAsStateWithLifecycle()
     val checking by app.checking.collectAsStateWithLifecycle()
+    val cleanupProgress by app.cleanup.collectAsStateWithLifecycle()
     val hub by produceState(emptyList<HubApp>(),revision) { value = withContext(Dispatchers.IO) { app.store.hub() } }
     val recent by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.recent() } }
     val history by produceState(emptyList<HistoryItem>(),revision) { value = withContext(Dispatchers.IO) { app.store.history() } }
@@ -97,6 +101,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val projectFiles by produceState(emptyList<DetectedFile>(),revision,selectedProjectId) {
         value = selectedProjectId?.let { withContext(Dispatchers.IO) { app.store.projectFiles(it) } }.orEmpty()
     }
+    val cleanupSummary by produceState<CleanupSummary?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.cleanupSummary() } }
+    val cleanupEntries by produceState(emptyList<CleanupEntry>(),revision,cleanupFlag) { value = withContext(Dispatchers.IO) { app.store.cleanupEntries(cleanupFlag) } }
+    val selectedFolders by produceState(emptyList<SelectedFolder>(),revision) { value = withContext(Dispatchers.IO) { app.store.selectedFolders() } }
     val ignored by produceState("0",revision) { value = withContext(Dispatchers.IO) { app.store.state("ignored") ?: "0" } }
     val lastCheck by produceState<String?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.state("last_check") } }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
@@ -105,6 +112,12 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(activity,Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionTick++ }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if(uri != null) try {
+            activity.contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            app.addSelectedFolder(uri)
+        } catch(_: Exception) { error = "Android didn't keep access to that folder. Choose it again and allow access." }
+    }
     LaunchedEffect(needsSorting) {
         val available = needsSorting.mapTo(mutableSetOf()) { it.path }
         sortingSelection = sortingSelection.intersect(available)
@@ -143,6 +156,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     LaunchedEffect(monitor.error) { if(monitor.error != null) { pendingId = null;pendingPackage = null;error = monitor.error } }
     BackHandler(page != "AI Hub") {
         if(page == "Project detail" || page == "Needs Sorting") { page = "Projects";selectedProjectId = null }
+        else if(page == "Cleanup list") page = "Phone"
         else page = "AI Hub"
     }
     Scaffold(
@@ -151,13 +165,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2B",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 2C",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
             NavigationBar(containerColor = Color(0xFFF3F7FD)) {
-                listOf("AI Hub" to Icons.Outlined.Apps,"Projects" to Icons.Outlined.Folder,"Recent" to Icons.Outlined.Schedule,"Activity" to Icons.Outlined.History,"Setup" to Icons.Outlined.Tune).forEach { (label,icon) ->
-                    NavigationBarItem(selected = page == label || (page == "Add apps" && label == "AI Hub") || ((page == "Project detail" || page == "Needs Sorting") && label == "Projects"),onClick = {
+                listOf("AI Hub" to Icons.Outlined.Apps,"Projects" to Icons.Outlined.Folder,"Phone" to Icons.Outlined.PhoneAndroid,"Activity" to Icons.Outlined.History,"Setup" to Icons.Outlined.Tune).forEach { (label,icon) ->
+                    NavigationBarItem(selected = page == label || ((page == "Add apps" || page == "Recent") && label == "AI Hub") || ((page == "Project detail" || page == "Needs Sorting") && label == "Projects") || (page == "Cleanup list" && label == "Phone"),onClick = {
                         page = label
                         if(label == "Projects") selectedProjectId = null
                     },icon = { Icon(icon,null) },label = { Text(label,fontSize = 10.sp) })
@@ -297,6 +311,43 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                     }
+                    "Phone" -> {
+                        item { Title("Clean Up My Phone", "Scan first. You choose every change.") }
+                        item { Text("The scan reads shared-file metadata and hashes only same-size duplicate candidates. It does not move, rename or delete anything.",fontSize = 13.sp,color = Muted) }
+                        if(!filesAllowed) item {
+                            InfoCard("File access is off", "Allow shared-file access before scanning the standard phone folders.",Icons.Outlined.FolderOpen) {
+                                TextButton(onClick = { page = "Setup" }) { Text("Open Setup") }
+                            }
+                        }
+                        if(cleanupProgress.running) item {
+                            InfoCard(cleanupProgress.stage.ifBlank { "Scanning…" },"${cleanupProgress.files} files found so far",Icons.Outlined.Search) {
+                                LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 10.dp))
+                            }
+                        }
+                        if(!cleanupProgress.running && cleanupProgress.stage.contains("unavailable")) item { InfoCard("Scan completed with limits",cleanupProgress.stage,Icons.Outlined.Info) {} }
+                        cleanupProgress.error?.let { problem -> item { InfoCard("Scan needs another try",problem,Icons.Outlined.ErrorOutline) {} } }
+                        item {
+                            Button(enabled = filesAllowed && !cleanupProgress.running,onClick = { app.scanPhone() },modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Outlined.Search,null);Spacer(Modifier.width(8.dp));Text(if(cleanupSummary == null) "Scan my phone" else "Scan again")
+                            }
+                        }
+                        if(cleanupSummary == null) item { InfoCard("Nothing changes during a scan", "Results appear as review lists. Camera photos are excluded from the old-file suggestion.",Icons.Outlined.Shield) {} }
+                        cleanupSummary?.let { summary ->
+                            item { Text("Last scan ${time(summary.completed)} · ${summary.totalFiles} files · ${formatBytes(summary.totalBytes)}",fontSize = 12.sp,color = Muted) }
+                            item { ActionRow("Browse scanned files","${summary.totalFiles} files across shared folders",Icons.Outlined.FolderOpen) { cleanupFlag = 0;cleanupTitle = "All scanned files";page = "Cleanup list" } }
+                            item { ActionRow("Likely AI files","${summary.likelyAi} suggestions",Icons.Outlined.AutoAwesome) { cleanupFlag = CleanupFlags.LIKELY_AI;cleanupTitle = "Likely AI files";page = "Cleanup list" } }
+                            item { ActionRow("Unsorted Downloads","${summary.unsortedDownloads} files without a project",Icons.Outlined.Download) { cleanupFlag = CleanupFlags.UNSORTED_DOWNLOAD;cleanupTitle = "Unsorted Downloads";page = "Cleanup list" } }
+                            item { ActionRow("Large files","${summary.large} files of 100 MB or more",Icons.Outlined.DataUsage) { cleanupFlag = CleanupFlags.LARGE;cleanupTitle = "Large files";page = "Cleanup list" } }
+                            item { ActionRow("Old files","${summary.old} suggestions · camera and pictures excluded",Icons.Outlined.Event) { cleanupFlag = CleanupFlags.OLD;cleanupTitle = "Old files";page = "Cleanup list" } }
+                            item { ActionRow("Archives","${summary.archives} ZIP or archive files",Icons.Outlined.Inventory2) { cleanupFlag = CleanupFlags.ARCHIVE;cleanupTitle = "Archives";page = "Cleanup list" } }
+                            item { ActionRow("Exact duplicates","${summary.duplicateGroups} groups · ${summary.duplicateFiles} files · up to ${formatBytes(summary.reclaimableBytes)} reviewable",Icons.Outlined.ContentCopy) { cleanupFlag = CleanupFlags.DUPLICATE;cleanupTitle = "Exact duplicates";page = "Cleanup list" } }
+                        }
+                    }
+                    "Cleanup list" -> {
+                        item { Title(cleanupTitle, "Review only. Nothing here is selected for deletion.") }
+                        if(cleanupEntries.isEmpty()) item { InfoCard("No matches", "Run the scan again after files on the phone change.",Icons.Outlined.CheckCircle) {} }
+                        items(cleanupEntries,key = { it.path }) { entry -> CleanupRow(entry) { cleanupDetail = entry } }
+                    }
                     "Recent" -> {
                         item { Title("Recent", "Likely AI files found on your phone.") }
                         item { Text("All files stay in their original locations in this test. Uncertain sources need your review.",color = Muted,fontSize = 14.sp) }
@@ -329,6 +380,19 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         item { PermissionCard("Monitoring notification",notificationsAllowed,"A quiet status notification lets you stop a session. It disappears when the session ends.","Allow notification") {
                             if(Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } }
+                        item { Text("Extra scan folders",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item { Text("Downloads, Documents, Camera, Pictures, Movies and Music are included automatically when file access is allowed. Add any other shared folder you want included in deliberate scans.",fontSize = 13.sp,color = Muted) }
+                        items(selectedFolders,key = { it.uri }) { folder ->
+                            Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.Folder,null,tint = Blue);Spacer(Modifier.width(12.dp))
+                                Text(folder.name,modifier = Modifier.weight(1f),maxLines = 2,overflow = TextOverflow.Ellipsis)
+                                IconButton(onClick = {
+                                    runCatching { activity.contentResolver.releasePersistableUriPermission(android.net.Uri.parse(folder.uri),Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION) }
+                                    app.scope.launch { app.store.removeSelectedFolder(folder.uri);app.changed() }
+                                }) { Icon(Icons.Outlined.RemoveCircleOutline,"Remove ${folder.name}") }
+                            }
+                        }
+                        item { OutlinedButton(onClick = { folderPicker.launch(null) },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.CreateNewFolder,null);Spacer(Modifier.width(8.dp));Text("Add scan folder") } }
                         item { Text("Your AI apps",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
                         items(hub,key = { it.packageName }) { selected ->
                             Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
@@ -369,6 +433,24 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         if(projects.isEmpty()) { editingProjectId = null;showProjectEditor = true }
         else assignmentPaths = listOf(file.path)
     }) { Text(if(file.projectId == null) "Assign" else "Change project") } }) }
+    cleanupDetail?.let { entry -> AlertDialog(
+        onDismissRequest = { cleanupDetail = null },
+        title = { Text(entry.name,maxLines = 3,overflow = TextOverflow.Ellipsis) },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(entry.root,fontWeight = FontWeight.SemiBold)
+            Text(cleanupReasons(entry).ifEmpty { listOf("Included in the phone browser") }.joinToString(" · "),fontSize = 13.sp)
+            if(entry.flags and CleanupFlags.DUPLICATE != 0) Text("Exact duplicate means the full file content hash matched. You still choose which copy to keep.",fontSize = 13.sp,color = Muted)
+            Text("${formatBytes(entry.size)} · ${if(entry.modified > 0) "modified ${time(entry.modified)}" else "date unavailable"}",fontSize = 12.sp,color = Muted)
+            Text(entry.path,fontSize = 11.sp,color = Muted)
+            Text("No file change has been proposed or applied.",fontSize = 12.sp,fontWeight = FontWeight.SemiBold)
+        } },
+        dismissButton = { TextButton(onClick = { cleanupDetail = null }) { Text("Done") } },
+        confirmButton = { TextButton(onClick = {
+            cleanupDetail = null
+            if(projects.isEmpty()) { editingProjectId = null;showProjectEditor = true }
+            else assignmentPaths = listOf(entry.path)
+        }) { Text("Assign to project") } }
+    ) }
     if(showProjectEditor) {
         val editing = projects.firstOrNull { it.id == editingProjectId }
         ProjectEditorDialog(editing,onDismiss = { showProjectEditor = false;editingProjectId = null }) { name ->
@@ -436,6 +518,20 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Text("${file.source ?: "Unknown source"} · ${file.confidence.lowercase()} confidence",fontSize = 12.sp,color = Muted)
                 Text(file.projectName?.let { "$it · ${file.projectConfidence.lowercase()} project" } ?: "Project not assigned",fontSize = 12.sp,color = Muted)
                 Text("${file.via} · ${time(file.time)}",fontSize = 11.sp,color = Muted)
+            }
+            Icon(Icons.Outlined.ChevronRight,null,tint = Muted)
+        }
+    }
+}
+@Composable private fun CleanupRow(entry: CleanupEntry, action: () -> Unit) {
+    OutlinedCard(onClick = action,modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp),verticalAlignment = Alignment.CenterVertically,horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(if(entry.flags and CleanupFlags.DUPLICATE != 0) Icons.Outlined.ContentCopy else Icons.Outlined.InsertDriveFile,null,tint = Blue)
+            Column(Modifier.weight(1f)) {
+                Text(entry.name,fontWeight = FontWeight.SemiBold,maxLines = 2,overflow = TextOverflow.Ellipsis)
+                Text("${entry.root} · ${formatBytes(entry.size)}",fontSize = 12.sp,color = Muted)
+                val reasons = cleanupReasons(entry)
+                if(reasons.isNotEmpty()) Text(reasons.joinToString(" · "),fontSize = 11.sp,color = Muted,maxLines = 2,overflow = TextOverflow.Ellipsis)
             }
             Icon(Icons.Outlined.ChevronRight,null,tint = Muted)
         }
@@ -540,3 +636,19 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     }
 }
 private fun time(timestamp: Long): String = DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(timestamp))
+private fun formatBytes(bytes: Long): String {
+    if(bytes < 1024) return "$bytes B"
+    val units = arrayOf("KB","MB","GB","TB")
+    var value = bytes.toDouble()
+    var unit = -1
+    while(value >= 1024 && unit < units.lastIndex) { value /= 1024;unit++ }
+    return if(value >= 10) "%.0f %s".format(value,units[unit]) else "%.1f %s".format(value,units[unit])
+}
+private fun cleanupReasons(entry: CleanupEntry): List<String> = buildList {
+    if(entry.flags and CleanupFlags.LIKELY_AI != 0) add("Likely AI")
+    if(entry.flags and CleanupFlags.UNSORTED_DOWNLOAD != 0) add("Unsorted download")
+    if(entry.flags and CleanupFlags.LARGE != 0) add("Large")
+    if(entry.flags and CleanupFlags.OLD != 0) add("Old")
+    if(entry.flags and CleanupFlags.ARCHIVE != 0) add("Archive")
+    if(entry.flags and CleanupFlags.DUPLICATE != 0) add("Exact duplicate")
+}

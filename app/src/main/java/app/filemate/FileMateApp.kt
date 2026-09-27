@@ -1,7 +1,9 @@
 package app.filemate
 
 import android.app.Application
+import android.net.Uri
 import android.os.Environment
+import android.provider.OpenableColumns
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -19,6 +21,7 @@ class FileMateApp : Application() {
     val revision = MutableStateFlow(0L)
     val monitor = MutableStateFlow(MonitorState())
     val checking = MutableStateFlow(false)
+    val cleanup = MutableStateFlow(CleanupProgress())
     private val scanLock = Mutex()
     override fun onCreate() {
         super.onCreate(); store = Store(this)
@@ -36,6 +39,50 @@ class FileMateApp : Application() {
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
     )
+    @Suppress("DEPRECATION")
+    fun cleanupRoots(): List<Pair<String,File>> = listOf(
+        "Downloads" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+        "Documents" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+        "Camera" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+        "Pictures" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+        "Movies" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES),
+        "Music" to Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+    ).distinctBy { runCatching { it.second.canonicalPath }.getOrDefault(it.second.absolutePath) }
+
+    fun scanPhone() {
+        if(cleanup.value.running) return
+        scope.launch {
+            if(!Environment.isExternalStorageManager()) {
+                cleanup.value = CleanupProgress(error = "Allow file access before scanning shared folders.")
+                return@launch
+            }
+            cleanup.value = CleanupProgress(running = true,stage = "Preparing scan")
+            try {
+                val scanner = CleanupScanner(contentResolver)
+                val result = scanner.scan(cleanupRoots(),store.selectedFolders(),store.assignedPaths(),store.knownAiPaths()) {
+                    cleanup.value = it
+                }
+                val finishedStage = cleanup.value.stage.ifBlank { "Scan complete" }
+                store.saveCleanupScan(result.first,result.second)
+                cleanup.value = CleanupProgress(stage = finishedStage,files = result.second.totalFiles)
+                changed()
+            } catch(e: Exception) {
+                cleanup.value = CleanupProgress(error = e.message ?: "The scan couldn't finish. No files were changed.")
+            }
+        }
+    }
+
+    fun addSelectedFolder(uri: Uri) {
+        scope.launch {
+            val name = runCatching {
+                contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use {
+                    if(it.moveToFirst()) it.getString(0) else null
+                }
+            }.getOrNull() ?: uri.lastPathSegment?.substringAfterLast(':') ?: "Selected folder"
+            store.addSelectedFolder(SelectedFolder(uri.toString(),name))
+            changed()
+        }
+    }
     suspend fun reconcile() = scanLock.withLock {
         if (!Environment.isExternalStorageManager()) return@withLock
         checking.value = true
