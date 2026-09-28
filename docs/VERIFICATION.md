@@ -70,3 +70,14 @@ Implementation commit `509c23675a0522776ebea279923422349a8ca38f` adds Gallery un
 The 30-minute monitoring proof was not repeated because monitoring and timeout behaviour were not changed. Only temporary emulator APKs were built; signing material and personal files were not accessed. Source version `0.3.0-stage3a` / code 4 is reserved for a future requested signed checkpoint and is not installed on Kel's phone.
 
 The same browser preview was published as Site version 4 from source `9342d6d780571cff4bf9a4e4786b40f769124a1a`. Phone → Gallery uses samples and preserves the existing five tabs; browser checks cover filters, details, assignment, limited visibility and empty states. It does not establish real-phone acceptance.
+
+
+## Unassigned Gallery refinement — 29 September 2026 Brisbane
+
+Native implementation `0d365a16d09353cba0a2abec4c1a74af1f0219c2` adds the user-approved Unassigned starting view, All Gallery, success-only detail dismissal, assignment confirmation and project labels. Assignment remains metadata-only; no schema or file-action change.
+
+- [Build 36487421503](https://github.com/KpDaze/FileMate-Public/actions/runs/36487421503): JVM checks, lint and debug assembly passed. Phone packaging/upload steps were skipped.
+- [Gallery proof 36487421513](https://github.com/KpDaze/FileMate-Public/actions/runs/36487421513): one Android 15/API 35 run passed all existing six media phases and the updated native UI proof. Unassigned dropped from 3 to 2 after assigning the screenshot, details closed, Refresh retained the assignment, All Gallery retained all 4 media, and clearing restored 3 unassigned. Exact file hashes at the original four fixture paths were unchanged after the UI flow.
+- Browser proof: 5 unassigned samples dropped to 4 after assignment; All Gallery retained 6 and showed the saved project; clear restored 5. Runtime integrity, production build and four Worker checks passed. Same Site published version 6, source `47d6ee23e5d632f469574e84f36fa33b471fcc0f`.
+
+No Stage 2 regression or long inactivity rerun was started; those code paths are unchanged. No signed phone APK, personal file operation, network permission, cloud API/key or paid service was added. The installed phone remains Stage 2, so this refinement is not phone-tested. Stage 3B grouping, Needs Sorting intake and batch Gallery assignment remain future work. The browser preview is separately maintained; it does not automatically update from native code.
