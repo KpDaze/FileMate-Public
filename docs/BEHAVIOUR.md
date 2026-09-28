@@ -43,3 +43,7 @@ Project is the main organisation unit across AI sources, screenshots, documents 
 The completed Gallery stages will add favourites/albums, reviewed recoverable media actions and duplicate/version review to Stage 3A browsing. Camera photos are not automatically changed without a deliberate rule or cleanup action. On-device OCR and exact hashes help screenshots; similar images are suggested groups, not proof that any image is disposable. Distinguish duplicates from changed versions.
 
 Approved Drive direction: global Phone only default; simple per-project Phone + Drive override. Drive after upload is deliberate and removes local data only after upload success is verified. Rule changes apply to future files; existing files require a separate review. Google Drive remains optional. Core functionality must continue without it. No hosted/paid dependencies may be introduced without explicit approval.
+
+### Gallery sorting view — 29 September 2026
+
+Phone → Gallery starts on Unassigned. Assignment saves a project record, closes details on success and removes that item from Unassigned. Errors keep details open. All Gallery and Projects retain assigned media, and clearing assignment returns media to Unassigned. No media is moved or deleted. Project Gallery still opens its selected project.

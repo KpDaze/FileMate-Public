@@ -46,11 +46,12 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     val scope = rememberCoroutineScope()
     val progress by app.gallery.collectAsStateWithLifecycle()
     val revision by app.revision.collectAsStateWithLifecycle()
-    var filter by rememberSaveable { mutableStateOf(if(initialProjectId == null) "All" else "Projects") }
+    var filter by rememberSaveable { mutableStateOf(if(initialProjectId == null) "Unassigned" else "Projects") }
     var projectFilter by rememberSaveable { mutableStateOf(initialProjectId) }
     var selected by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var assigning by remember { mutableStateOf(false) }
+    var assignmentMessage by remember { mutableStateOf<String?>(null) }
     val access = MediaAccess.read(context)
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { app.refreshGallery() }
     LaunchedEffect(resumed) {
@@ -65,6 +66,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     val visible = if(resumed && progress.ready && !progress.running && access.any) all else emptyList()
     val filtered = visible.filter {
         when(filter) {
+            "Unassigned" -> it.projectId == null
             "Camera" -> it.clues.camera
             "Screenshots" -> it.clues.screenshot
             "Downloads" -> it.clues.downloads
@@ -96,11 +98,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
                     Text("${filtered.size} visible",modifier = Modifier.weight(1f),fontSize = 13.sp)
                     TextButton(enabled = access.any && !progress.running,onClick = { selected = null;app.refreshGallery() }) {
-                        Icon(Icons.Outlined.Refresh,null);Spacer(Modifier.width(6.dp));Text("Refresh")
+                        Icon(Icons.Outlined.Refresh,null);Spacer(Modifier.width(6.dp));Text(if(progress.running) "Refreshing…" else "Refresh")
                     }
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("All","Camera","Screenshots","Downloads","Projects").forEach { choice ->
+                    listOf("Unassigned","All Gallery","Camera","Screenshots","Downloads","Projects").forEach { choice ->
                         FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null },label = { Text(choice) })
                     }
                 }
@@ -108,13 +110,16 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     FilterChip(selected = projectFilter == null,onClick = { projectFilter = null },label = { Text("Any project") })
                     projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id },label = { Text(p.name) }) }
                 }
+                if(filter == "Unassigned") Text("Assign a project to clear an item from this view. It stays in All Gallery and its project.",fontSize = 12.sp)
+                assignmentMessage?.let { Text(it,fontSize = 13.sp,color = MaterialTheme.colorScheme.primary) }
                 if(filter == "Camera") Text("Camera folder items are for browsing. Nothing is automatically selected or reorganised.",fontSize = 12.sp)
                 if(filter == "Screenshots") Text("Likely screenshots from folder or filename clues. These clues do not prove how an image was made.",fontSize = 12.sp)
                 if(progress.running) LinearProgressIndicator(Modifier.fillMaxWidth())
                 progress.message?.let { Text(it,fontSize = 13.sp) }
                 if(!progress.running && progress.ready && filtered.isEmpty()) {
                     Text(if(visible.isEmpty()) "No accessible photos or videos yet. Try choosing more items or refresh after Android has indexed them."
-                        else "No media in this filter. Try All or choose another project.",modifier = Modifier.padding(vertical = 20.dp))
+                        else if(filter == "Unassigned") "All accessible media has a project. Browse All Gallery or Projects."
+                        else "No media in this filter. Try All Gallery or choose another project.",modifier = Modifier.padding(vertical = 20.dp))
                 }
             }
         }
@@ -128,6 +133,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 }
                 Text(item.name,maxLines = 1,overflow = TextOverflow.Ellipsis,fontSize = 11.sp,modifier = Modifier.padding(6.dp,4.dp))
                 Text(mediaDate(item.sortTime),fontSize = 10.sp,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp))
+                item.projectName?.let { Text(it,fontSize = 11.sp,color = MaterialTheme.colorScheme.primary,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp)) }
             }
         }
     }
@@ -147,6 +153,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         assigning = true
                         scope.launch {
                             runCatching { withContext(Dispatchers.IO) { app.store.assignMedia(detail.identity,project.id) } }
+                                .onSuccess { selected = null;assignmentMessage = "Assigned to ${project.name}. Your media stays where it is." }
                                 .onFailure { error = it.message ?: "Couldn't assign this item." }
                             assigning = false;app.changed()
                         }
@@ -157,6 +164,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         assigning = true
                         scope.launch {
                             runCatching { withContext(Dispatchers.IO) { app.store.assignMedia(detail.identity,null) } }
+                                .onSuccess { selected = null;assignmentMessage = "Assignment cleared. Find this item in Unassigned." }
                                 .onFailure { error = it.message ?: "Couldn't clear this assignment." }
                             assigning = false;app.changed()
                         }
