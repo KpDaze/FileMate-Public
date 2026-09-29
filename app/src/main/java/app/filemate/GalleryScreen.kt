@@ -42,12 +42,13 @@ import java.text.DateFormat
 import java.util.Date
 
 @Composable
-fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, modifier: Modifier = Modifier, onBack: () -> Unit) {
+fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, modifier: Modifier = Modifier, sortingOnly: Boolean = false, initialGroup: String? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val progress by app.gallery.collectAsStateWithLifecycle()
     val revision by app.revision.collectAsStateWithLifecycle()
-    var filter by rememberSaveable { mutableStateOf(if(initialProjectId == null) "Unassigned" else "Projects") }
+    var filter by rememberSaveable { mutableStateOf(if(sortingOnly) "Needs Sorting" else if(initialProjectId == null) "Unassigned" else "Projects") }
+    var groupFilter by rememberSaveable { mutableStateOf(initialGroup) }
     var projectFilter by rememberSaveable { mutableStateOf(initialProjectId) }
     var selected by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -73,22 +74,28 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     val projects by produceState(emptyList<Project>(),revision) { value = withContext(Dispatchers.IO) { app.store.projects() } }
     // A resumed refresh must finish before retained data or thumbnails can be shown.
     val visible = if(resumed && progress.ready && !progress.running && access.any) all else emptyList()
+    val groups = screenshotGroups(visible,unassignedOnly = filter == "Needs Sorting")
+    val groupedIds = groups.filter { groupFilter == null || it.key == groupFilter }.flatMap { it.identities }.toSet()
     val filtered = visible.filter {
         when(filter) {
             "Unassigned" -> it.projectId == null
             "Camera" -> it.clues.camera
-            "Screenshots" -> it.clues.screenshot
+            "Screenshots", "Needs Sorting" -> it.identity in groupedIds
             "Downloads" -> it.clues.downloads
             "Projects" -> it.projectId != null && (projectFilter == null || it.projectId == projectFilter)
             else -> true
         }
     }
+    val displayGroups: List<Pair<ScreenshotGroup?,List<IndexedMedia>>> = if(filter == "Screenshots" || filter == "Needs Sorting") {
+        val byId = filtered.associateBy { it.identity }
+        groups.map { it to it.identities.mapNotNull(byId::get) }.filter { it.second.isNotEmpty() }
+    } else listOf(null to filtered)
     val detail = visible.firstOrNull { it.identity == selected }
     LazyVerticalGrid(columns = GridCells.Fixed(3),modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp,12.dp,20.dp,24.dp),horizontalArrangement = Arrangement.spacedBy(8.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                TextButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack,null);Spacer(Modifier.width(6.dp));Text("Phone") }
+                TextButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack,null);Spacer(Modifier.width(6.dp));Text(if(sortingOnly) "Needs Sorting" else "Phone") }
                 Text("Gallery",fontSize = 36.sp,fontWeight = FontWeight.Bold)
                 Text("Your photos and videos, in date order.",color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Browse and assign a project. Your media stays where it is.",fontSize = 13.sp)
@@ -111,13 +118,18 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     }
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Unassigned","All Gallery","Camera","Screenshots","Downloads","Projects").forEach { choice ->
-                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;clearSelection() },label = { Text(choice) })
+                    listOf("Unassigned","All Gallery","Camera","Screenshots","Needs Sorting","Downloads","Projects").forEach { choice ->
+                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;groupFilter = null;assignmentMessage = null;clearSelection() },label = { Text(choice) })
                     }
                 }
                 if(filter == "Projects") Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = projectFilter == null,onClick = { projectFilter = null;clearSelection() },label = { Text("Any project") })
                     projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id;clearSelection() },label = { Text(p.name) }) }
+                }
+                if(filter == "Screenshots" || filter == "Needs Sorting") {
+                    Text("Grouped by date and folder clues, not by topic or project. Camera folder items are excluded.",fontSize = 12.sp)
+                    if(filter == "Needs Sorting") Text("Only accessible, unassigned screenshots appear here. Choose items, then confirm their project.",fontSize = 12.sp)
+                    if(groupFilter != null) TextButton(onClick = { groupFilter = null;clearSelection();assignmentMessage = null }) { Text("Show all screenshot groups") }
                 }
                 if(filter == "Unassigned") Text("Assign a project to clear an item from this view. It stays in All Gallery and its project.",fontSize = 12.sp)
                 if(selecting) {
@@ -134,26 +146,33 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 progress.message?.let { Text(it,fontSize = 13.sp) }
                 if(!progress.running && progress.ready && filtered.isEmpty()) {
                     Text(if(visible.isEmpty()) "No accessible photos or videos yet. Try choosing more items or refresh after Android has indexed them."
+                        else if(filter == "Needs Sorting") "No unassigned screenshots in this group. Browse other groups or All Gallery."
                         else if(filter == "Unassigned") "All accessible media has a project. Browse All Gallery or Projects."
                         else "No media in this filter. Try All Gallery or choose another project.",modifier = Modifier.padding(vertical = 20.dp))
                 }
             }
         }
-        items(filtered,key = { it.identity }) { item ->
-            OutlinedCard(onClick = { if(selecting) selection = if(item.identity in selection) selection - item.identity else selection + item.identity else selected = item.identity },modifier = Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
-                    MediaThumbnail(item,Modifier.fillMaxSize())
-                    if(selecting) Checkbox(checked = item.identity in selection,onCheckedChange = null,modifier = Modifier.align(Alignment.TopEnd),colors = CheckboxDefaults.colors(uncheckedColor = MaterialTheme.colorScheme.primary))
-                    if(item.kind == "video") Surface(Modifier.align(Alignment.BottomEnd).padding(4.dp),color = MaterialTheme.colorScheme.surface) {
-                        Text("▶ ${duration(item.duration)}",fontSize = 10.sp,modifier = Modifier.padding(4.dp))
+        displayGroups.forEach { (group,media) ->
+            if(group != null) item(key = "group:${group.key}",span = { GridItemSpan(maxLineSpan) }) {
+                Column { Text(group.day,fontWeight = FontWeight.SemiBold);Text("${group.folder} · ${media.size} items",fontSize = 12.sp) }
+            }
+            items(media,key = { it.identity }) { item ->
+                OutlinedCard(onClick = { if(selecting) selection = if(item.identity in selection) selection - item.identity else selection + item.identity else selected = item.identity },modifier = Modifier.fillMaxWidth()) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
+                        MediaThumbnail(item,Modifier.fillMaxSize())
+                        if(selecting) Checkbox(checked = item.identity in selection,onCheckedChange = null,modifier = Modifier.align(Alignment.TopEnd),colors = CheckboxDefaults.colors(uncheckedColor = MaterialTheme.colorScheme.primary))
+                        if(item.kind == "video") Surface(Modifier.align(Alignment.BottomEnd).padding(4.dp),color = MaterialTheme.colorScheme.surface) {
+                            Text("▶ ${duration(item.duration)}",fontSize = 10.sp,modifier = Modifier.padding(4.dp))
+                        }
                     }
+                    Text(item.name,maxLines = 1,overflow = TextOverflow.Ellipsis,fontSize = 11.sp,modifier = Modifier.padding(6.dp,4.dp))
+                    Text(mediaDate(item.sortTime),fontSize = 10.sp,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp))
+                    item.projectName?.let { Text(it,fontSize = 11.sp,color = MaterialTheme.colorScheme.primary,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp)) }
                 }
-                Text(item.name,maxLines = 1,overflow = TextOverflow.Ellipsis,fontSize = 11.sp,modifier = Modifier.padding(6.dp,4.dp))
-                Text(mediaDate(item.sortTime),fontSize = 10.sp,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp))
-                item.projectName?.let { Text(it,fontSize = 11.sp,color = MaterialTheme.colorScheme.primary,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp)) }
             }
         }
     }
+
     if(detail != null) AlertDialog(onDismissRequest = { if(!assigning) selected = null },title = { Text(detail.name,maxLines = 2,overflow = TextOverflow.Ellipsis) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {

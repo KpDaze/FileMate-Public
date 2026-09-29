@@ -1,16 +1,7 @@
 name: FileMate Stage 2 Android proof
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/android-stage2-proof.yml
-      - tools/verify-stage2-emulator.sh
-      - app/src/debug/**
-      - app/src/main/java/app/filemate/Cleanup.kt
-      - app/src/main/java/app/filemate/FileActions.kt
-      - app/src/main/java/app/filemate/VerifiedFileTransfer.kt
-      - app/src/main/java/app/filemate/Store.kt
+  # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
 
 permissions:

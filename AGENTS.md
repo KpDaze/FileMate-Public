@@ -10,3 +10,6 @@ This is the public native Android copy in KpDaze/FileMate-Public. Preserve unrel
 - Keep the full Version 1 target. The first technical proof is not the completed organiser/gallery.
 - Distinguish build/unit-test evidence from emulator and real-phone evidence. Do not claim unperformed device tests passed.
 - The user works from Android and does not code. No IDE or terminal required from them; explain steps plainly and do not re-request already granted permission.
+
+## Emulator approval — 29 September 2026
+Never start an Android emulator or dispatch an emulator workflow without Kel approving that specific run first. Use non-emulator checks first; batch verification. Emulator workflows are manual-only. Do not restore push triggers. Standard public build/unit-test/lint checks may run without an emulator.

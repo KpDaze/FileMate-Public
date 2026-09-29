@@ -1,19 +1,7 @@
 name: FileMate Gallery Android proof
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/android-gallery-proof.yml
-      - tools/verify-gallery-emulator.sh
-      - app/src/debug/**
-      - tools/generate-gallery-fixtures.py
-      - tools/gallery-ui-smoke.py
-      - tools/fixtures/**
-      - app/src/main/java/app/filemate/Gallery*.kt
-      - app/src/main/java/app/filemate/Store.kt
-      - app/src/main/java/app/filemate/FileMateApp.kt
-      - app/src/main/AndroidManifest.xml
+  # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
 
 permissions:

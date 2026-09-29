@@ -1,10 +1,6 @@
 name: FileMate Android inactivity proof
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/android-inactivity-proof.yml
-      - tools/verify-inactivity-emulator.sh
+  # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
 
 permissions:

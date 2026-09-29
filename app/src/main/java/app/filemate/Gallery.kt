@@ -98,3 +98,7 @@ class GalleryScanner(private val context: Context) {
         return items
     }
 }
+
+fun screenshotGroups(items: List<IndexedMedia>, unassignedOnly: Boolean = false): List<ScreenshotGroup> =
+    GalleryScreenshotRules.groups(items.map { ScreenshotCandidate(it.identity,it.volume,it.relativePath,it.sortTime,
+        it.clues.screenshot,it.clues.camera,it.kind == "video",it.available,it.projectId != null) },unassignedOnly)

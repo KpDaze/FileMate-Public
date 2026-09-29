@@ -71,6 +71,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun FileMate(app: FileMateApp, activity: MainActivity) {
     var page by rememberSaveable { mutableStateOf("AI Hub") }
+    var gallerySorting by rememberSaveable { mutableStateOf(false) }
+    var galleryGroup by rememberSaveable { mutableStateOf<String?>(null) }
     var galleryProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var selectedProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
     var editingProjectId by rememberSaveable { mutableStateOf<Long?>(null) }
@@ -100,7 +102,21 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val recent by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.recent() } }
     val history by produceState(emptyList<HistoryItem>(),revision) { value = withContext(Dispatchers.IO) { app.store.history() } }
     val projects by produceState(emptyList<Project>(),revision) { value = withContext(Dispatchers.IO) { app.store.projects() } }
-    val needsSorting by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.needsSorting() } }
+    val detectedNeedsSorting by produceState(emptyList<DetectedFile>(),revision) { value = withContext(Dispatchers.IO) { app.store.needsSorting() } }
+    val galleryProgress by app.gallery.collectAsStateWithLifecycle()
+    val sortingMedia by produceState(emptyList<IndexedMedia>(),revision,galleryProgress,resumed) {
+        value = if(resumed && galleryProgress.ready && !galleryProgress.running && MediaAccess.read(activity).any)
+            withContext(Dispatchers.IO) { app.store.mediaItems() } else emptyList()
+    }
+    val accessibleSortingMedia = if(resumed && galleryProgress.ready && !galleryProgress.running && MediaAccess.read(activity).any) sortingMedia else emptyList()
+    val screenshotIntake = screenshotGroups(accessibleSortingMedia,unassignedOnly = true)
+    val screenshotIds = screenshotIntake.flatMap { it.identities }.toSet()
+    val screenshotPaths = sortingMedia.filter { it.identity in screenshotIds }.mapTo(mutableSetOf()) { it.currentPath }
+    val needsSorting = detectedNeedsSorting.filter { it.path !in screenshotPaths }
+    val sortingCount = needsSorting.size + screenshotIds.size
+    LaunchedEffect(resumed,page) {
+        if(resumed && (page == "Projects" || page == "Needs Sorting")) app.refreshGallery()
+    }
     val selectedProject = projects.firstOrNull { it.id == selectedProjectId }
     val projectFiles by produceState(emptyList<DetectedFile>(),revision,selectedProjectId) {
         value = selectedProjectId?.let { withContext(Dispatchers.IO) { app.store.projectFiles(it) } }.orEmpty()
@@ -165,7 +181,8 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     LaunchedEffect(monitor.error) { if(monitor.error != null) { pendingId = null;pendingPackage = null;error = monitor.error } }
     BackHandler(page != "AI Hub") {
         if(page == "Project detail" || page == "Needs Sorting") { page = "Projects";selectedProjectId = null }
-        else if(page == "Cleanup list" || page == "Gallery") page = "Phone"
+        else if(page == "Gallery") page = if(gallerySorting) "Needs Sorting" else "Phone"
+        else if(page == "Cleanup list") page = "Phone"
         else page = "AI Hub"
     }
     Scaffold(
@@ -174,7 +191,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 3A",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 3B",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
@@ -190,7 +207,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     ) { padding ->
         when(page) {
             "Add apps" -> AppPicker(app,hub,Modifier.padding(padding)) { page = "AI Hub" }
-            "Gallery" -> GalleryScreen(app,resumed,galleryProjectId,Modifier.padding(padding)) { page = "Phone" }
+            "Gallery" -> GalleryScreen(app,resumed,galleryProjectId,Modifier.padding(padding),gallerySorting,galleryGroup) { page = if(gallerySorting) "Needs Sorting" else "Phone" }
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding = PaddingValues(22.dp,12.dp,22.dp,24.dp),verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when(page) {
                     "AI Hub" -> {
@@ -240,13 +257,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { Text(if(usageAllowed) "Stops after 30 minutes away from your selected AI apps." else "Without app activity access, sessions end 30 minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
-                        if(needsSorting.isNotEmpty()) item { ActionRow("Needs Sorting","${needsSorting.size} files need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
+                        if(sortingCount > 0) item { ActionRow("Needs Sorting","$sortingCount items need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         if(recent.isNotEmpty()) item { ActionRow("Recent detections","${recent.size} likely AI files · review source clues",Icons.Outlined.InsertDriveFile) { page = "Recent" } }
                         item { Text("Project names and assignments stay in FileMate's local database. Files remain in their original locations.",color = Muted,fontSize = 12.sp) }
                     }
                     "Projects" -> {
                         item { Title("Projects", "Keep files together by what you're working on.") }
-                        item { ActionRow("Needs Sorting",if(needsSorting.isEmpty()) "Everything detected has a project" else "${needsSorting.size} files ready to review",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
+                        item { ActionRow("Needs Sorting",if(sortingCount == 0) "No accessible items waiting" else "$sortingCount items ready to review",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         item {
                             Button(onClick = { editingProjectId = null;showProjectEditor = true },modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Outlined.CreateNewFolder,null);Spacer(Modifier.width(8.dp));Text("Create project")
@@ -285,7 +302,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
-                            if(projectMediaCount > 0) item { ActionRow("Project Gallery","$projectMediaCount indexed photos or videos · access may limit what is visible",Icons.Outlined.PhotoLibrary) { galleryProjectId = selectedProject.id;page = "Gallery" } }
+                            if(projectMediaCount > 0) item { ActionRow("Project Gallery","$projectMediaCount indexed photos or videos · access may limit what is visible",Icons.Outlined.PhotoLibrary) { gallerySorting = false;galleryGroup = null;galleryProjectId = selectedProject.id;page = "Gallery" } }
                             if(projectFiles.isEmpty() && projectMediaCount == 0) item {
                                 InfoCard("No files assigned", "Assign files in Needs Sorting or photos and videos in Gallery.",Icons.Outlined.DriveFileMove) {}
                             }
@@ -302,7 +319,18 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 TextButton(onClick = { editingProjectId = null;showProjectEditor = true }) { Text("Create project") }
                             }
                         }
-                        if(needsSorting.isEmpty()) item { InfoCard("Nothing waiting", "New uncertain or unassigned AI files will appear here.",Icons.Outlined.CheckCircle) {} }
+                        item { Text("Screenshot groups",fontWeight = FontWeight.SemiBold) }
+                        item { Text("Unassigned screenshots grouped by date and folder clues. These groups do not predict a project. Camera folder items stay out.",fontSize = 13.sp,color = Muted) }
+                        if(galleryProgress.running) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+                        if(screenshotIntake.isEmpty()) item { Text(if(galleryProgress.running) "Checking accessible screenshots…" else "No accessible unassigned screenshots. Open Gallery to choose photo access or refresh.",fontSize = 13.sp,color = Muted) }
+                        items(screenshotIntake,key = { "screenshots:${it.key}" }) { group ->
+                            ActionRow(group.day,"${group.identities.size} screenshots · ${group.folder}",Icons.Outlined.PhotoLibrary) {
+                                gallerySorting = true;galleryGroup = group.key;galleryProjectId = null;page = "Gallery"
+                            }
+                        }
+                        item { TextButton(onClick = { gallerySorting = true;galleryGroup = null;galleryProjectId = null;page = "Gallery" }) { Text("Review all unassigned screenshots") } }
+                        item { Text("Other files",fontWeight = FontWeight.SemiBold) }
+                        if(needsSorting.isEmpty()) item { Text("No other files waiting.",fontSize = 13.sp,color = Muted) }
                         if(needsSorting.isNotEmpty()) item {
                             Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
                                 Text("${sortingSelection.size} selected",fontWeight = FontWeight.SemiBold,modifier = Modifier.weight(1f))
@@ -323,7 +351,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         }
                     }
                     "Phone" -> {
-                        item { ActionRow("Gallery","Browse local photos, screenshots and videos",Icons.Outlined.PhotoLibrary) { galleryProjectId = null;page = "Gallery" } }
+                        item { ActionRow("Gallery","Browse local photos, screenshots and videos",Icons.Outlined.PhotoLibrary) { gallerySorting = false;galleryGroup = null;galleryProjectId = null;page = "Gallery" } }
                         item { Title("Clean Up My Phone", "Scan first. You choose every change.") }
                         item { Text("The scan reads shared-file metadata and hashes only same-size duplicate candidates. It does not move, rename or delete anything.",fontSize = 13.sp,color = Muted) }
                         if(!filesAllowed) item {
