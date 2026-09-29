@@ -101,3 +101,15 @@ fun Store.assignMedia(identity: String, projectId: Long?) = synchronized(this) {
 fun Store.galleryProjectCount(projectId: Long): Int = synchronized(this) {
     readableDatabase.rawQuery("SELECT COUNT(*) FROM media WHERE project_id=? AND available=1",arrayOf(projectId.toString())).use { it.moveToFirst();it.getInt(0) }
 }
+
+/** One outer transaction makes the complete selection succeed or roll back together. */
+fun Store.assignMediaBatch(identities: List<String>, projectId: Long?) = synchronized(this) {
+    val ids = identities.distinct()
+    require(ids.isNotEmpty()) { "Select at least one media item." }
+    val db = writableDatabase
+    db.beginTransaction()
+    try {
+        ids.forEach { assignMedia(it,projectId) }
+        db.setTransactionSuccessful()
+    } finally { db.endTransaction() }
+}

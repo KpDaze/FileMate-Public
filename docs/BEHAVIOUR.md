@@ -47,3 +47,6 @@ Approved Drive direction: global Phone only default; simple per-project Phone + 
 ### Gallery sorting view — 29 September 2026
 
 Phone → Gallery starts on Unassigned. Assignment saves a project record, closes details on success and removes that item from Unassigned. Errors keep details open. All Gallery and Projects retain assigned media, and clearing assignment returns media to Unassigned. No media is moved or deleted. Project Gallery still opens its selected project.
+
+## Confirmed Gallery assignment — 29 September 2026
+Gallery supports manual multi-select. Select photos, choose Assign selected, review the item names and destination, then Confirm assignment. Single-item details use the same review. Choosing a project alone changes nothing; Cancel or Back saves nothing. Clearing assignments also requires confirmation. A successful batch is one SQLite transaction, including organiser metadata and history; an invalid item rolls the batch back. No media moves, renames or deletions occur. Unassigned items leave that view only after confirmation and remain in All Gallery and Projects. Filter changes, Refresh and leaving Gallery clear pending selection.

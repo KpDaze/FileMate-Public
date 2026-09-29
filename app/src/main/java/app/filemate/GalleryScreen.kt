@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.CancellationSignal
 import android.provider.Settings
 import android.util.Size
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -52,10 +53,18 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     var error by remember { mutableStateOf<String?>(null) }
     var assigning by remember { mutableStateOf(false) }
     var assignmentMessage by remember { mutableStateOf<String?>(null) }
+    var selecting by remember { mutableStateOf(false) }
+    var selection by remember { mutableStateOf(setOf<String>()) }
+    var review by remember { mutableStateOf<List<String>?>(null) }
+    var target by remember { mutableStateOf<Long?>(null) }
+    var targetChosen by remember { mutableStateOf(false) }
+    fun clearSelection() { selecting = false;selection = emptySet() }
+    fun openReview(ids: List<String>) { review = ids;target = null;targetChosen = false;selected = null }
+    BackHandler(selecting && review == null) { clearSelection() }
     val access = MediaAccess.read(context)
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { app.refreshGallery() }
     LaunchedEffect(resumed) {
-        selected = null
+        selected = null;review = null;clearSelection()
         if(resumed) app.refreshGallery()
     }
     val all by produceState(emptyList<IndexedMedia>(),revision,progress) {
@@ -97,20 +106,27 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 }
                 Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
                     Text("${filtered.size} visible",modifier = Modifier.weight(1f),fontSize = 13.sp)
-                    TextButton(enabled = access.any && !progress.running,onClick = { selected = null;app.refreshGallery() }) {
+                    TextButton(enabled = access.any && !progress.running,onClick = { selected = null;clearSelection();app.refreshGallery() }) {
                         Icon(Icons.Outlined.Refresh,null);Spacer(Modifier.width(6.dp));Text(if(progress.running) "Refreshing…" else "Refresh")
                     }
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Unassigned","All Gallery","Camera","Screenshots","Downloads","Projects").forEach { choice ->
-                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null },label = { Text(choice) })
+                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;clearSelection() },label = { Text(choice) })
                     }
                 }
                 if(filter == "Projects") Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = projectFilter == null,onClick = { projectFilter = null },label = { Text("Any project") })
-                    projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id },label = { Text(p.name) }) }
+                    FilterChip(selected = projectFilter == null,onClick = { projectFilter = null;clearSelection() },label = { Text("Any project") })
+                    projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id;clearSelection() },label = { Text(p.name) }) }
                 }
                 if(filter == "Unassigned") Text("Assign a project to clear an item from this view. It stays in All Gallery and its project.",fontSize = 12.sp)
+                if(selecting) {
+                    Text("${selection.size} selected",fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(enabled = selection.isNotEmpty(),onClick = { openReview(selection.toList()) }) { Text("Assign selected") }
+                        TextButton(onClick = { clearSelection() }) { Text("Cancel selection") }
+                    }
+                } else TextButton(enabled = filtered.isNotEmpty(),onClick = { selecting = true }) { Text("Select photos") }
                 assignmentMessage?.let { Text(it,fontSize = 13.sp,color = MaterialTheme.colorScheme.primary) }
                 if(filter == "Camera") Text("Camera folder items are for browsing. Nothing is automatically selected or reorganised.",fontSize = 12.sp)
                 if(filter == "Screenshots") Text("Likely screenshots from folder or filename clues. These clues do not prove how an image was made.",fontSize = 12.sp)
@@ -124,9 +140,10 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
             }
         }
         items(filtered,key = { it.identity }) { item ->
-            OutlinedCard(onClick = { selected = item.identity },modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(onClick = { if(selecting) selection = if(item.identity in selection) selection - item.identity else selection + item.identity else selected = item.identity },modifier = Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
                     MediaThumbnail(item,Modifier.fillMaxSize())
+                    if(selecting) Checkbox(checked = item.identity in selection,onCheckedChange = null,modifier = Modifier.align(Alignment.TopEnd),colors = CheckboxDefaults.colors(uncheckedColor = MaterialTheme.colorScheme.primary))
                     if(item.kind == "video") Surface(Modifier.align(Alignment.BottomEnd).padding(4.dp),color = MaterialTheme.colorScheme.surface) {
                         Text("▶ ${duration(item.duration)}",fontSize = 10.sp,modifier = Modifier.padding(4.dp))
                     }
@@ -146,32 +163,46 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 if(detail.originalPath != detail.currentPath || detail.originalName != detail.name) item { Text("First indexed as\n${detail.originalPath}",fontSize = 12.sp) }
                 item { Text("Screenshot clue: ${detail.clues.screenshotConfidence}\n${detail.clues.explanation}",fontSize = 12.sp) }
                 item { Text("Project: ${detail.projectName ?: "Unassigned"}\n${detail.projectConfidence}. Assignment changes only FileMate's records.",fontSize = 13.sp) }
-                item { Text("Assign to project",fontWeight = FontWeight.SemiBold) }
-                if(projects.isEmpty()) item { Text("Create a project in Projects first.",fontSize = 12.sp) }
-                items(projects,key = { it.id }) { project ->
-                    TextButton(enabled = !assigning && detail.projectId != project.id,onClick = {
-                        assigning = true
-                        scope.launch {
-                            runCatching { withContext(Dispatchers.IO) { app.store.assignMedia(detail.identity,project.id) } }
-                                .onSuccess { selected = null;assignmentMessage = "Assigned to ${project.name}. Your media stays where it is." }
-                                .onFailure { error = it.message ?: "Couldn't assign this item." }
-                            assigning = false;app.changed()
-                        }
-                    }) { Text(project.name) }
-                }
-                if(detail.projectId != null) item {
-                    TextButton(enabled = !assigning,onClick = {
-                        assigning = true
-                        scope.launch {
-                            runCatching { withContext(Dispatchers.IO) { app.store.assignMedia(detail.identity,null) } }
-                                .onSuccess { selected = null;assignmentMessage = "Assignment cleared. Find this item in Unassigned." }
-                                .onFailure { error = it.message ?: "Couldn't clear this assignment." }
-                            assigning = false;app.changed()
-                        }
-                    }) { Text("Clear project assignment") }
-                }
+                item { Button(onClick = { openReview(listOf(detail.identity)) }) { Text("Assign to project") } }
             }
         },confirmButton = { TextButton(enabled = !assigning,onClick = { selected = null }) { Text("Done") } })
+    review?.let { ids ->
+        val reviewItems = visible.filter { it.identity in ids }
+        val valid = reviewItems.size == ids.size && targetChosen && (target == null || projects.any { it.id == target })
+        AlertDialog(onDismissRequest = { if(!assigning) review = null },title = { Text("Assign ${ids.size} ${if(ids.size == 1) "item" else "items"}") },
+            text = { LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                item { Text("Choose a project, then confirm. Nothing changes until you confirm.",fontSize = 13.sp) }
+                items(reviewItems,key = { it.identity }) { item -> Text("${item.name} · ${item.projectName ?: "Unassigned"}",fontSize = 12.sp) }
+                item { Text("Your media stays where it is. Only FileMate's project records change.",fontSize = 12.sp) }
+                if(reviewItems.any { it.clues.camera }) item { Text("Includes manually selected camera media. No photo will be moved.",fontSize = 12.sp) }
+                items(projects,key = { it.id }) { project ->
+                    TextButton(enabled = !assigning,onClick = { target = project.id;targetChosen = true }) {
+                        RadioButton(selected = targetChosen && target == project.id,onClick = null)
+                        Text(project.name)
+                    }
+                }
+                item { TextButton(enabled = !assigning,onClick = { target = null;targetChosen = true }) {
+                    RadioButton(selected = targetChosen && target == null,onClick = null);Text("Clear project assignment")
+                } }
+                if(targetChosen) item { Text("Selected: ${projects.firstOrNull { it.id == target }?.name ?: "Unassigned"}",fontWeight = FontWeight.SemiBold) }
+                if(reviewItems.size != ids.size) item { Text("Some items are unavailable. Cancel and refresh Gallery.") }
+            } },
+            confirmButton = { Button(enabled = valid && !assigning,onClick = {
+                assigning = true
+                val destination = target
+                val destinationName = projects.firstOrNull { it.id == destination }?.name
+                scope.launch {
+                    runCatching { withContext(Dispatchers.IO) { app.store.assignMediaBatch(ids,destination) } }
+                        .onSuccess {
+                            review = null;clearSelection()
+                            assignmentMessage = if(destination == null) "Assignment cleared. Find these items in Unassigned."
+                                else "${ids.size} assigned to $destinationName. Your media stays where it is."
+                        }.onFailure { error = it.message ?: "Couldn't assign these items. Nothing was changed." }
+                    assigning = false;app.changed()
+                }
+            }) { Text(if(assigning) "Saving…" else "Confirm assignment") } },
+            dismissButton = { TextButton(enabled = !assigning,onClick = { review = null }) { Text("Cancel") } })
+    }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null },title = { Text("Gallery") },text = { Text(message) },confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
 }
 

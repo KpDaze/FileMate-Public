@@ -56,6 +56,16 @@ class GalleryProbeActivity : ComponentActivity() {
                         check(media.single { it.kind == "video" }.duration > 0)
                         val download = media.single { it.clues.downloads }
                         val project = store.createProject("Gallery fixture project")
+                        val batch = media.filter { it.clues.camera || it.clues.screenshot }.map { it.identity }
+                        val historyBefore = store.history().size
+                        check(runCatching { store.assignMediaBatch(batch + "missing-fixture",project) }.isFailure)
+                        check(store.mediaItems().filter { it.identity in batch }.all { it.projectId == null })
+                        check(store.history().size == historyBefore) { "Failed batch left partial history" }
+                        check(store.assignedPaths().isEmpty()) { "Failed batch left organiser assignments" }
+                        store.assignMediaBatch(batch,project)
+                        check(store.mediaItems().filter { it.identity in batch }.all { it.projectId == project })
+                        store.assignMediaBatch(batch,null)
+                        check(store.mediaItems().filter { it.identity in batch }.all { it.projectId == null })
                         store.assignMedia(download.identity,project)
                         check(store.projects().single { it.id == project }.fileCount == 1)
                         check(store.assignedPaths().contains(download.currentPath))
