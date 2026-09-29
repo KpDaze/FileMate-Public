@@ -39,7 +39,9 @@ adb shell pm grant app.filemate android.permission.READ_MEDIA_VIDEO
 probe restored
 publish FileMateFixture_changed.png /sdcard/Download/FileMateFixture_download.png
 probe changed
-python3 tools/gallery-ui-smoke.py
+if [[ "${FILEMATE_STAGE3B_ONLY:-0}" != "1" ]]; then
+  python3 tools/gallery-ui-smoke.py
+fi
 
 # The same approved emulator session now checks the new Stage 3B slice.
 publish Screenshot_FileMateFixture.png /sdcard/Pictures/Screenshots/Screenshot_FileMateFixture_second.png

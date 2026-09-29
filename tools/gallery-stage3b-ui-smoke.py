@@ -4,6 +4,7 @@ Only shell-owned disposable fixtures; the UI assigns metadata, never media bytes
 import json
 import re
 import subprocess
+import sys
 import time
 import xml.etree.ElementTree as ET
 
@@ -18,6 +19,18 @@ width, height = map(int, re.findall(r'(\d+)x(\d+)', adb('shell', 'wm', 'size'))[
 def nodes():
     adb('shell', 'uiautomator', 'dump', '/sdcard/filemate-stage3b-ui.xml')
     return list(ET.fromstring(adb('shell', 'cat', '/sdcard/filemate-stage3b-ui.xml')).iter('node'))
+
+
+def report_failure(kind, error, traceback):
+    # Preserve the exact UI evidence if a later assertion fails.
+    try:
+        print('STAGE3B_FAILURE_UI', ET.tostring(ET.fromstring(adb('shell', 'cat', '/sdcard/filemate-stage3b-ui.xml')), encoding='unicode'), flush=True)
+    except Exception as dump_error:
+        print('Could not read last UI dump:', dump_error, flush=True)
+    sys.__excepthook__(kind, error, traceback)
+
+
+sys.excepthook = report_failure
 
 
 def scroll(direction):
@@ -83,7 +96,14 @@ tap('Cancel')
 wait_text('2 selected', 'up')
 wait_text('2 visible', 'up')
 tap('Assign selected')
-assert wait_text('Confirm assignment').get('enabled') == 'false', 'Destination survived cancellation'
+# UIAutomator may expose the Text label separately from its disabled Button.
+# Test the actual behavior instead of treating the label's enabled flag as the button.
+wait_text('Confirm assignment')
+assert not any((n.get('text') or '').startswith('Selected:') for n in nodes()), 'Destination survived cancellation'
+tap('Confirm assignment')  # No destination chosen: this must have no effect.
+wait_text('Assign 2 items')
+wait_text('Choose a project, then confirm. Nothing changes until you confirm.')
+assert not any((n.get('text') or '').startswith('Selected:') for n in nodes()), 'Confirm invented a destination'
 tap('Gallery fixture project')
 tap('Confirm assignment')
 wait_text('2 assigned to Gallery fixture project. Your media stays where it is.', 'down')

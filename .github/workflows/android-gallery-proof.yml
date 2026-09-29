@@ -3,6 +3,12 @@ name: FileMate Gallery Android proof
 on:
   # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
+    inputs:
+      stage3b_only:
+        description: 'Skip the already-passed older UI flow; verify Stage 3B plus media probes'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +35,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           test -e /dev/kvm
       - name: Verify read-only Gallery with disposable media
+        env:
+          FILEMATE_STAGE3B_ONLY: ${{ inputs.stage3b_only && '1' || '0' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
