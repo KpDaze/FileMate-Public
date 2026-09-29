@@ -16,7 +16,7 @@ The personal phone update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-25
 
 A later Stage 2 safeguard repair through `1c59694e88c1beb21a001358acbee8af63fdafe0` enforces exclusive destination creation and fingerprints every previewed move so Undo can refuse same-size edits. Interrupted copies remain for review; older hashless actions are not eligible for automatic Undo. See the [repair verification](docs/VERIFICATION.md). This source repair is not in the installed signed Stage 2 APK; no replacement signed phone APK has been delivered.
 
-Stage 3A is now implemented in source as `0.3.0-stage3a`, version code 4. Phone → Gallery reads local image/video metadata through MediaStore, displays chronological thumbnails and Unassigned/All Gallery/Camera/Screenshots/Downloads/Projects filters, and supports confirmed individual and batch project assignment without changing media. Schema 5 adds a forward-only media migration. The [Gallery evidence](docs/VERIFICATION.md#stage-3a-read-only-gallery--28-september-2026-brisbane) distinguishes Android fixture checks from unperformed real-phone tests. No Stage 3 phone APK has been packaged or delivered.
+Stage 3A and metadata-based Stage 3B are now implemented in source as `0.3.0-stage3b`, version code 4. Phone → Gallery reads local image/video metadata through MediaStore, displays chronological thumbnails and Unassigned/All Gallery/Camera/Screenshots/Downloads/Projects filters, and supports confirmed individual and batch project assignment without changing media. Schema 5 adds a forward-only media migration. The [Gallery evidence](docs/VERIFICATION.md#stage-3a-read-only-gallery--28-september-2026-brisbane) distinguishes Android fixture checks from unperformed real-phone tests. No Stage 3 phone APK has been packaged or delivered.
 
 ## Native behaviour
 
@@ -47,7 +47,7 @@ Requires JDK 17, Android SDK platform 36 and build-tools 35.0.0. The Gradle wrap
 
 APK output: `app/build/outputs/apk/debug/app-debug.apk`. FileMate needs Android 11 or newer. A personal signing key can be supplied using `FILEMATE_TEST_KEY` and `FILEMATE_KEY_PASSWORD`; never commit the key or password. A differently signed APK cannot update the installed personal copy.
 
-The lightweight Android build workflow runs for ordinary app changes. A bounded Stage 2 Android proof covers cleanup, move and Undo. A separate bounded Gallery proof covers disposable image/video indexing, permission changes, migration, unchanged bytes and native screen navigation. The separate 30-minute emulator workflow runs only when its own workflow or verification script changes, or when manually dispatched.
+The lightweight Android build workflow runs for ordinary app changes. A bounded Stage 2 Android proof covers cleanup, move and Undo. A separate bounded Gallery proof covers disposable image/video indexing, permission changes, migration, unchanged bytes and native screen navigation. All three emulator workflows are now manual-only. Each specific run requires Kel’s explicit approval first. Ordinary app pushes run build/JVM/lint checks without an emulator.
 
 ## Evidence and roadmap
 
@@ -55,4 +55,4 @@ See [phone test](docs/PHONE-TEST.md), [behaviour](docs/BEHAVIOUR.md), [verificat
 
 This public repository is the active development source. The earlier private repository is a preserved historical checkpoint. Signing and recovery material stays private and outside public Git. Preserve history; do not force-push or add paid dependencies without explicit approval.
 
-Gallery sorting refinement: opens on Unassigned. Successful confirmed assignment closes review and removes the item from that view; All Gallery and its project retain it. Clearing assignment restores it to Unassigned. This is metadata-only, with no schema change or phone APK. Gallery multi-select and explicit confirmation are now implemented; Stage 3B screenshot grouping and Needs Sorting intake remain future work.
+Gallery sorting refinement: opens on Unassigned. Successful confirmed assignment closes review and removes the item from that view; All Gallery and its project retain it. Clearing assignment restores it to Unassigned. This is metadata-only, with no schema change or phone APK. Gallery multi-select and explicit confirmation are now implemented; Stage 3B now groups accessible likely screenshots by local date and folder, excluding camera-folder items and videos. Needs Sorting offers unassigned screenshot groups and reviews them through the same confirmed Gallery flow. Groups do not infer a topic, provider or project. No OCR or schema change. Build/JVM/lint and browser evidence passed; the new native grouping/intake screens have not been tested on Android or Kel’s phone.
