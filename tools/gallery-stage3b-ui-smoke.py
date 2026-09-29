@@ -113,10 +113,13 @@ wait_text('1 screenshots · Download', 'down')
 # Opening all groups must now show only the one remaining unassigned screenshot.
 tap('Review all unassigned screenshots')
 wait_text('1 visible')
-tap('Refresh', 'up')
-wait_text('1 visible')
-tap('All Gallery', 'up')
-wait_text('6 visible')
+# This entry opens at the page top. Refresh and the filter row are below the
+# access card on the 320x640 emulator, so search down rather than above it.
+tap('Refresh', 'down')
+wait_text('Refresh')  # The label returns after the scan finishes.
+wait_text('1 visible', 'up')
+tap('All Gallery', 'down')
+wait_text('6 visible', 'up')
 tap('Screenshot_FileMateFixture.png')
 wait_text("Project: Gallery fixture project\nConfirmed. Assignment changes only FileMate's records.", 'down')
 tap('Assign to project')
