@@ -1,5 +1,6 @@
 package app.filemate
 
+import android.content.ContentValues
 import android.os.Bundle
 import android.os.Environment
 import androidx.activity.ComponentActivity
@@ -23,18 +24,22 @@ class GalleryProbeActivity : ComponentActivity() {
                 check(!Environment.isExternalStorageManager()) { "Gallery proof must not use All files access" }
                 val store = app.store
                 val access = MediaAccess.read(this@GalleryProbeActivity)
-                if(phase == "selected") {
+                if(phase == "stage3b") {
+                    verifyStage3b(store)
+                } else if(phase == "selected") {
                     check(access.selected && !access.images && !access.videos)
                     val selected = GalleryScanner(this@GalleryProbeActivity).scan()
                     check(selected.isEmpty()) { "No fixture was selected in Android" }
                     store.saveMediaSnapshot(selected)
                     check(store.mediaItems().isEmpty())
+                    check(screenshotGroups(store.mediaItems(),true).isEmpty())
                     check(store.mediaItems(true).any { it.projectId != null })
                 } else if(phase == "denied") {
                     check(!access.any) { "Expected permission denial: $access" }
                     check(GalleryScanner(this@GalleryProbeActivity).scan().isEmpty())
                     store.hideUnavailableMedia()
                     check(store.mediaItems().isEmpty())
+                    check(screenshotGroups(store.mediaItems(),true).isEmpty())
                     check(store.mediaItems(true).any { it.projectId != null })
                 } else {
                     val expected = if(phase == "images") 3 else 4
@@ -101,6 +106,50 @@ class GalleryProbeActivity : ComponentActivity() {
                 result.writeText(JSONObject().put("passed",false).put("phase",phase).put("error",e.stackTraceToString()).toString())
             } finally { runOnUiThread { finish() } }
         }
+    }
+    private suspend fun verifyStage3b(store: Store) {
+        var media = emptyList<IndexedMedia>()
+        for(attempt in 0..29) {
+            media = GalleryScanner(this).scan().filter { "FileMateFixture" in it.name }
+            if(media.size == 6) break
+            delay(500)
+        }
+        check(media.size == 6) { "Stage 3B expected six fixtures, got ${media.map { it.name }}" }
+        val before = media.associate { it.uri to hash(it) }
+        store.saveMediaSnapshot(media)
+        val screenshots = media.filter { it.clues.screenshot && !it.clues.camera }
+        check(screenshots.size == 3)
+        val ids = screenshots.map { it.identity }
+        val groups = screenshotGroups(store.mediaItems(),true)
+        check(groups.size == 2 && groups.map { it.identities.size }.sorted() == listOf(1,2)) { "Wrong date/folder groups: $groups" }
+        check(groups.flatMap { it.identities }.toSet() == ids.toSet()) { "Camera/video or assigned items entered intake" }
+        store.saveMediaSnapshot(media)
+        check(screenshotGroups(store.mediaItems(),true) == groups) { "Repeated scan changed/duplicated groups" }
+        val temporary = store.createProject("Stage 3B disposable project")
+        store.assignMediaBatch(ids,temporary)
+        check(screenshotGroups(store.mediaItems(),true).isEmpty())
+        check(screenshotGroups(store.mediaItems()).flatMap { it.identities }.size == 3)
+        store.saveMediaSnapshot(media)
+        check(screenshotGroups(store.mediaItems(),true).isEmpty()) { "Refresh lost assignments" }
+        store.hideUnavailableMedia()
+        check(screenshotGroups(store.mediaItems(),true).isEmpty())
+        check(store.mediaItems(true).filter { it.identity in ids }.all { it.projectId == temporary })
+        store.saveMediaSnapshot(media)
+        check(store.mediaItems().filter { it.identity in ids }.all { it.projectId == temporary })
+        store.assignMedia(ids.first(),null)
+        check(screenshotGroups(store.mediaItems(),true).flatMap { it.identities } == listOf(ids.first()))
+        store.deleteProject(temporary)
+        check(screenshotGroups(store.mediaItems(),true).flatMap { it.identities }.toSet() == ids.toSet())
+        check(media.associate { it.uri to hash(it) } == before) { "Stage 3B changed fixture bytes" }
+        // Give one screenshot an existing organiser observation. The actual Needs Sorting
+        // screen must show its group, without repeating its file row under Other files.
+        val overlap = screenshots.first { it.name == "Screenshot_FileMateFixture.png" }
+        store.writableDatabase.insertOrThrow("observations",null,ContentValues().apply {
+            put("name",overlap.name);put("path",overlap.currentPath);put("size",overlap.size)
+            put("detected",System.currentTimeMillis());put("confidence","Low")
+            put("reason","Disposable Stage 3B overlap fixture");put("via","Catch-up")
+        })
+        check(store.needsSorting().any { it.path == overlap.currentPath })
     }
     private fun hash(item: IndexedMedia): String = requireNotNull(contentResolver.openInputStream(item.uri.toUri())).use { stream ->
         val digest = MessageDigest.getInstance("SHA-256")

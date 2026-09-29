@@ -40,3 +40,9 @@ probe restored
 publish FileMateFixture_changed.png /sdcard/Download/FileMateFixture_download.png
 probe changed
 python3 tools/gallery-ui-smoke.py
+
+# The same approved emulator session now checks the new Stage 3B slice.
+publish Screenshot_FileMateFixture.png /sdcard/Pictures/Screenshots/Screenshot_FileMateFixture_second.png
+publish Screenshot_FileMateFixture.png /sdcard/Download/Screenshot_FileMateFixture_download.png
+probe stage3b
+python3 tools/gallery-stage3b-ui-smoke.py
