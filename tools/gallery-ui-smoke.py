@@ -67,6 +67,9 @@ tap('Assign to project')
 tap('Clear project assignment')
 tap('Confirm assignment')
 wait_text('Assignment cleared. Find these items in Unassigned.')
+# Details can be opened after scrolling the grid; return to its filter header.
+width,height = map(int,re.findall(r'(\d+)x(\d+)',adb('shell','wm','size'))[-1])
+adb('shell','input','swipe',str(width//2),str(height*3//10),str(width//2),str(height*8//10),'400')
 tap('Unassigned')
 wait_text('2 visible')
 assert adb('shell','sha256sum',*fixtures) == before, 'Gallery assignment changed fixture bytes or paths'
