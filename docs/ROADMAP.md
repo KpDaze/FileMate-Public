@@ -4,7 +4,7 @@
 2. **Organiser — source complete, phone acceptance pending.** Local metadata, manual projects, source/project confidence separately, Recent / Projects / Needs Sorting, single and batch assignment, review-first cleanup, useful naming, safe moves, Activity and Undo are implemented and covered by a bounded Android 15 proof.
 3. **Gallery and screenshots — Stage 3A implemented and fixture-tested; later slices remain.**
    - **3A:** read-only MediaStore image/video index, chronology, Camera/Screenshots/Downloads/Projects filters, honest screenshot clues, individual metadata-only assignment, non-destructive schema 5 migration and limited/denied-access handling. Physical-phone testing is pending.
-   - **3B next:** screenshot grouping, Needs Sorting and batch project assignment. Review any optional fully on-device, non-paid OCR choice before adding it; no network permission or cloud OCR.
+   - **3B partial:** confirmed single/batch Gallery assignment is implemented. Screenshot grouping and Needs Sorting intake remain next. Review any optional fully on-device, non-paid OCR choice before adding it; no network permission or cloud OCR.
    - **3C:** exact image duplicate groups separately from visual-similarity/version suggestions, side-by-side review and Keep all.
    - **3D:** favourites/albums and deliberate recoverable trash or supported media actions, with preview and disposable real-phone acceptance. No automatic camera organisation.
 4. **Optional Drive and Version 1 completion.** Account connection, browse/search/folders/move/rename, selected uploads, same project structure, per-project copy rules, verified-upload-before-local-removal, review of existing Drive files and practical duplicates. Full end-to-end acceptance against the original handover.

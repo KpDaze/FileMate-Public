@@ -16,7 +16,7 @@ The personal phone update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-25
 
 A later Stage 2 safeguard repair through `1c59694e88c1beb21a001358acbee8af63fdafe0` enforces exclusive destination creation and fingerprints every previewed move so Undo can refuse same-size edits. Interrupted copies remain for review; older hashless actions are not eligible for automatic Undo. See the [repair verification](docs/VERIFICATION.md). This source repair is not in the installed signed Stage 2 APK; no replacement signed phone APK has been delivered.
 
-Stage 3A is now implemented in source as `0.3.0-stage3a`, version code 4. Phone → Gallery reads local image/video metadata through MediaStore, displays chronological thumbnails and Unassigned/All Gallery/Camera/Screenshots/Downloads/Projects filters, and supports individual project assignment without changing media. Schema 5 adds a forward-only media migration. The [Gallery evidence](docs/VERIFICATION.md#stage-3a-read-only-gallery--28-september-2026-brisbane) distinguishes Android fixture checks from unperformed real-phone tests. No Stage 3 phone APK has been packaged or delivered.
+Stage 3A is now implemented in source as `0.3.0-stage3a`, version code 4. Phone → Gallery reads local image/video metadata through MediaStore, displays chronological thumbnails and Unassigned/All Gallery/Camera/Screenshots/Downloads/Projects filters, and supports confirmed individual and batch project assignment without changing media. Schema 5 adds a forward-only media migration. The [Gallery evidence](docs/VERIFICATION.md#stage-3a-read-only-gallery--28-september-2026-brisbane) distinguishes Android fixture checks from unperformed real-phone tests. No Stage 3 phone APK has been packaged or delivered.
 
 ## Native behaviour
 
@@ -55,4 +55,4 @@ See [phone test](docs/PHONE-TEST.md), [behaviour](docs/BEHAVIOUR.md), [verificat
 
 This public repository is the active development source. The earlier private repository is a preserved historical checkpoint. Signing and recovery material stays private and outside public Git. Preserve history; do not force-push or add paid dependencies without explicit approval.
 
-Gallery sorting refinement: opens on Unassigned. Successful individual assignment closes details and removes the item from that view; All Gallery and its project retain it. Clearing assignment restores it to Unassigned. This is metadata-only, with no schema change or phone APK. Full Stage 3B grouping/batch intake remains future work.
+Gallery sorting refinement: opens on Unassigned. Successful confirmed assignment closes review and removes the item from that view; All Gallery and its project retain it. Clearing assignment restores it to Unassigned. This is metadata-only, with no schema change or phone APK. Gallery multi-select and explicit confirmation are now implemented; Stage 3B screenshot grouping and Needs Sorting intake remain future work.
