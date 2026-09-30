@@ -87,11 +87,11 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         while(c.moveToNext()) add(detectedFile(c))
     } }
     @Synchronized fun projects(): List<Project> = readableDatabase.rawQuery("""
-        SELECT p.id,p.name,p.created,p.updated,COUNT(f.path) +
-            (SELECT COUNT(*) FROM media m WHERE m.project_id=p.id AND m.available=1 AND NOT EXISTS
-                (SELECT 1 FROM files linked WHERE linked.path=m.current_path AND linked.project_id=p.id))
-        FROM projects p LEFT JOIN files f ON f.project_id=p.id
-        GROUP BY p.id ORDER BY p.updated DESC,p.name COLLATE NOCASE
+        SELECT p.id,p.name,p.created,p.updated,
+            (SELECT COUNT(*) FROM files f WHERE f.project_id=p.id AND NOT EXISTS
+                (SELECT 1 FROM media m WHERE m.current_path=f.path OR m.original_path=f.path)) +
+            (SELECT COUNT(*) FROM media m WHERE m.project_id=p.id AND m.available=1)
+        FROM projects p ORDER BY p.updated DESC,p.name COLLATE NOCASE
     """.trimIndent(),null).use { c -> buildList {
         while(c.moveToNext()) add(Project(c.getLong(0),c.getString(1),c.getLong(2),c.getLong(3),c.getInt(4)))
     } }
@@ -104,7 +104,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         JOIN projects p ON p.id=f.project_id
         LEFT JOIN observations o ON o.id=(SELECT MAX(latest.id) FROM observations latest WHERE latest.path=f.path)
         LEFT JOIN cleanup_entries c ON c.path=f.path
-        WHERE f.project_id=? AND NOT EXISTS (SELECT 1 FROM media m WHERE m.current_path=f.path AND m.available=1)
+        WHERE f.project_id=? AND NOT EXISTS (SELECT 1 FROM media m WHERE m.current_path=f.path OR m.original_path=f.path)
         ORDER BY COALESCE(o.detected,c.modified,f.modified) DESC
     """.trimIndent(),arrayOf(projectId.toString())).use { c -> buildList {
         while(c.moveToNext()) add(detectedFile(c))

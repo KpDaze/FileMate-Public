@@ -26,6 +26,15 @@ class GalleryProbeActivity : ComponentActivity() {
                 val access = MediaAccess.read(this@GalleryProbeActivity)
                 if(phase == "stage3c") {
                     verifyStage3c(app)
+                } else if(phase == "stage3c-after") {
+                    val fresh = GalleryScanner(this@GalleryProbeActivity).scan()
+                    store.saveMediaSnapshot(fresh)
+                    val project = store.projects().single { it.name == "Comparison fixture project" }
+                    check(project.fileCount == 2)
+                    check(store.projectFiles(project.id).isEmpty())
+                    check(store.mediaItems().count { it.projectId == project.id } == 2)
+                    check(GalleryMediaActions(app).trashItems().isEmpty())
+                    check(fresh.count { it.name.startsWith("FileMateCompare_") } == 3)
                 } else if(phase == "stage3c-denied") {
                     check(!access.images && !access.selected)
                     check(runCatching { GalleryCompareScanner(this@GalleryProbeActivity).scan {} }.isFailure)
@@ -134,6 +143,22 @@ class GalleryProbeActivity : ComponentActivity() {
         ImageMatchKind.entries.forEach { kind -> check(output.matches.count { it.kind == kind } == 1) { "Expected one $kind group: ${output.matches}" } }
         val exact = output.matches.single { it.kind == ImageMatchKind.EXACT }
         check(exact.ids.toSet() == media.filter { it.name != "FileMateCompare_v2.png" }.map { it.identity }.toSet())
+        val actions = GalleryMediaActions(app)
+        val picked = listOf(media.single { it.name == "FileMateCompare_copy.png" })
+        check(actions.validate(picked,output.fingerprints).size == 1)
+        check(runCatching { actions.validate(picked,emptyMap()) }.isFailure) { "Missing content evidence was accepted" }
+        check(runCatching { actions.validate(picked.map { it.copy(size=it.size+1) },output.fingerprints) }.isFailure) { "Changed metadata was accepted" }
+        check(runCatching { actions.validate(emptyList(),output.fingerprints) }.isFailure)
+        actions.track(picked)
+        check(actions.trashItems().isEmpty()) { "Untrashed media appeared in Trash" }
+        check(actions.trashState(picked.single())?.first == false)
+        check(actions.trashState(picked.single().copy(identity="recycled-row")) == null)
+        check(runCatching { actions.restoreRequest(picked) }.isFailure)
+        app.store.hideUnavailableMedia()
+        check(app.store.projectFiles(project).isEmpty()) { "Unavailable media leaked into ordinary project files" }
+        check(app.store.projects().single { it.id == project }.fileCount == 0)
+        app.store.saveMediaSnapshot(media)
+        check(app.store.projects().single { it.id == project }.fileCount == 1)
         val again = GalleryCompareScanner(this).scan {}
         check(again.matches.toSet() == output.matches.toSet()) { "Rescan changed groups" }
         app.store.state("gallery_compare_kept_v1",exact.key)

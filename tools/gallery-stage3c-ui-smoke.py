@@ -41,12 +41,12 @@ def scroll(direction):
 
 def wait_text(text, direction=None):
     current = []
-    for attempt in range(8):
+    for attempt in range(12):
         current = nodes()
         matches = [n for n in current if text in (n.get('text'), n.get('content-desc'))]
         if matches:
             return matches[0]
-        if direction and attempt in (1, 3, 5):
+        if direction and attempt in (1, 3, 5, 7, 9):
             scroll(direction)
         time.sleep(.4)
     raise AssertionError(f'Missing {text!r}; visible: {[n.get("text") for n in current if n.get("text")]}')
@@ -61,7 +61,7 @@ def tap(text, direction='down'):
 
 def top():
     # Bounded return to the header, using the actual device size.
-    for _ in range(3):
+    for _ in range(6):
         scroll('up')
 
 
@@ -99,5 +99,70 @@ tap('Possible versions (1)', 'down')
 tap('Compare side by side')
 wait_text('Possible versions', 'up')
 tap('Back without deciding')
+# Comparison actions: manual selection, explicit confirmation, system Trash and restore.
+tap('Exact duplicates (1)', 'up')
+tap('Compare side by side')
+wait_text('0 selected · Nothing is selected automatically.', 'down')
+tap('Select FileMateCompare_v1.png', 'up')
+tap('Assign selected to project')
+tap('Comparison fixture project')
+tap('Cancel')
+wait_text('1 selected · Nothing is selected automatically.', 'down')
+tap('Assign selected to project')
+tap('Confirm assignment')  # Still no chosen destination: no effect.
+wait_text('Assign 1 items')
+tap('Comparison fixture project')
+tap('Confirm assignment')
+wait_text('1 project assignments saved. Images stay in their original locations.', 'down')
+tap('Select FileMateCompare_v1.png', 'up')
+tap('Move selected to Trash')
+wait_text('Move 1 images to Trash?')
+tap('Cancel')
+wait_text('1 selected · Nothing is selected automatically.', 'down')
+tap('Move selected to Trash')
+tap('Confirm Trash')
+
+def system_button(positive):
+    wanted = 'android:id/button1' if positive else 'android:id/button2'
+    for _ in range(12):
+        current = nodes()
+        matches = [n for n in current if n.get('resource-id') == wanted and n.get('package') != 'app.filemate']
+        if matches:
+            n = matches[0]
+            x1,y1,x2,y2 = map(int,re.findall(r'\d+',n.get('bounds')))
+            adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
+            return
+        time.sleep(.5)
+    raise AssertionError('Android system confirmation button missing: '+wanted)
+
+system_button(False)
+wait_text('Android confirmation cancelled. Scan again to continue reviewing.', 'down')
+tap('Scan images', 'up')
+wait_text('Exact duplicates (1)', 'down')
+tap('Compare side by side')
+tap('Select FileMateCompare_v1.png')
+tap('Move selected to Trash')
+tap('Confirm Trash')
+system_button(True)
+wait_text('1 of 1 images verified in Trash. Open Comparison Trash to restore. Scan again to update comparisons.', 'down')
+assert subprocess.call(['adb','shell','test','-f',fixtures[0]]) != 0, 'Trashed item stayed at original path'
+# Restart while the image is still trashed: recovery must survive process death.
+adb('shell','am','force-stop','app.filemate')
+adb('shell','am','start','-n','app.filemate/.MainActivity')
+tap('Phone')
+tap('Gallery')
+tap('Compare images')
+tap('Comparison Trash')
+tap('FileMateCompare_v1.png')
+tap('Restore selected (1)')
+tap('Cancel')
+wait_text('Restore selected (1)')
+tap('Restore selected (1)')
+tap('Confirm restore')
+system_button(True)
+wait_text('1 of 1 images verified restored. Scan again to compare them.', 'down')
+# Reopening after a process restart still sees saved project metadata.
+adb('shell','am','force-stop','app.filemate')
+adb('shell','am','start','-n','app.filemate/.MainActivity')
 assert adb('shell','sha256sum',*fixtures) == before, 'Comparison UI changed fixture bytes'
-print(json.dumps({'stage3c_ui':'passed','exact_similar_versions':True,'keep_all_rescan_restore':True,'hashes_unchanged':True}))
+print(json.dumps({'stage3c_ui':'passed','exact_similar_versions':True,'keep_all_rescan_restore':True,'trash_restore_hashes_unchanged':True,'confirmed_assignment':True,'trash_cancel_and_restore':True}))

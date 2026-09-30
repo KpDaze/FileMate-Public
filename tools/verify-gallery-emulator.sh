@@ -27,6 +27,7 @@ if [[ "${FILEMATE_STAGE3C_ONLY:-0}" == "1" ]]; then
   adb shell pm grant app.filemate android.permission.READ_MEDIA_IMAGES
   probe stage3c
   python3 tools/gallery-stage3c-ui-smoke.py
+  probe stage3c-after
   adb shell pm revoke app.filemate android.permission.READ_MEDIA_IMAGES
   adb shell pm revoke app.filemate android.permission.READ_MEDIA_VISUAL_USER_SELECTED || true
   probe stage3c-denied

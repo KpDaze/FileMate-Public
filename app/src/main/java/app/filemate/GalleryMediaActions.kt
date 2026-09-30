@@ -1,6 +1,5 @@
 package app.filemate
 
-import android.content.ContentResolver
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.core.net.toUri
@@ -24,8 +23,9 @@ class GalleryMediaActions(private val app: FileMateApp) {
             }
             val digest = MessageDigest.getInstance("SHA-256")
             app.contentResolver.openInputStream(item.uri.toUri())?.use { stream ->
-                val buffer = ByteArray(64*1024)
-                while(true) { currentCoroutineContext().ensureActive();val n=stream.read(buffer);if(n<0) break;digest.update(buffer,0,n) }
+                val buffer = ByteArray(64*1024);var bytes = 0L
+                while(true) { currentCoroutineContext().ensureActive();val n=stream.read(buffer);if(n<0) break;bytes += n;check(bytes <= item.size) { "Image changed. Scan again." };digest.update(buffer,0,n) }
+                check(bytes == item.size) { "Image changed. Scan again." }
             } ?: error("An image is unavailable. Cancel and scan again.")
             check(digest.digest().joinToString("") { "%02x".format(it) } == fingerprints[item.identity]) {
                 "Image contents changed. Cancel and scan again."
