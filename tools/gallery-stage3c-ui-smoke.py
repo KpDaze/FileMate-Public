@@ -99,8 +99,9 @@ tap('Possible versions (1)', 'down')
 tap('Compare side by side')
 wait_text('Possible versions', 'up')
 tap('Back without deciding')
+# Returning from a pair resets the results list to its header. Categories are below it.
 # Comparison actions: manual selection, explicit confirmation, system Trash and restore.
-tap('Exact duplicates (1)', 'up')
+tap('Exact duplicates (1)', 'down')
 tap('Compare side by side')
 wait_text('0 selected · Nothing is selected automatically.', 'down')
 tap('Select FileMateCompare_v1.png', 'up')
