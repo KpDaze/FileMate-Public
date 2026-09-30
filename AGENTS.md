@@ -13,3 +13,6 @@ This is the public native Android copy in KpDaze/FileMate-Public. Preserve unrel
 
 ## Emulator approval — 29 September 2026
 Never start an Android emulator or dispatch an emulator workflow without Kel approving that specific run first. Use non-emulator checks first; batch verification. Emulator workflows are manual-only. Do not restore push triggers. Standard public build/unit-test/lint checks may run without an emulator.
+
+## Comparison actions — 30 September 2026 afternoon
+Kel confirmed manual selection, existing project assignment with explicit confirmation, and recoverable Trash/restore directly from comparison. Do this work without asking again about scope. No physical phone-folder picker is wanted. Preserve Android's own Trash/restore consent, content/identity revalidation, recoverability/expiry disclosure and persistent recovery access. This is an authorised comparison-action slice of 3D; other 3D work remains deferred. Each emulator run still needs its own approval; none has been approved for 3C/actions yet.
