@@ -10,12 +10,6 @@ publish() {
   adb push "$fixtures/$1" "$2" >/dev/null
   adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$2" >/dev/null
 }
-publish Screenshot_FileMateFixture.png /sdcard/Pictures/Screenshots/Screenshot_FileMateFixture.png
-publish FileMateFixture_camera.png /sdcard/DCIM/Camera/FileMateFixture_camera.png
-publish FileMateFixture_download.png /sdcard/Download/FileMateFixture_download.png
-publish FileMateFixture_video.mp4 /sdcard/Movies/FileMateFixture_video.mp4
-adb shell pm grant app.filemate android.permission.READ_MEDIA_IMAGES
-adb shell pm grant app.filemate android.permission.READ_MEDIA_VIDEO
 probe() {
   adb shell am start --user 0 -n app.filemate/.GalleryProbeActivity --es phase "$1" >/dev/null
   for _ in $(seq 1 60); do
@@ -26,6 +20,27 @@ probe() {
   echo "$result"
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r.get("passed") is True,r' "$result"
 }
+if [[ "${FILEMATE_STAGE3C_ONLY:-0}" == "1" ]]; then
+  for name in FileMateCompare_v1.png FileMateCompare_v2.png FileMateCompare_copy.png; do
+    publish "$name" "/sdcard/Download/$name"
+  done
+  adb shell pm grant app.filemate android.permission.READ_MEDIA_IMAGES
+  probe stage3c
+  python3 tools/gallery-stage3c-ui-smoke.py
+  adb shell pm revoke app.filemate android.permission.READ_MEDIA_IMAGES
+  adb shell pm revoke app.filemate android.permission.READ_MEDIA_VISUAL_USER_SELECTED || true
+  probe stage3c-denied
+  adb shell pm grant app.filemate android.permission.READ_MEDIA_VISUAL_USER_SELECTED
+  probe stage3c-selected
+  exit 0
+fi
+publish Screenshot_FileMateFixture.png /sdcard/Pictures/Screenshots/Screenshot_FileMateFixture.png
+publish FileMateFixture_camera.png /sdcard/DCIM/Camera/FileMateFixture_camera.png
+publish FileMateFixture_download.png /sdcard/Download/FileMateFixture_download.png
+publish FileMateFixture_video.mp4 /sdcard/Movies/FileMateFixture_video.mp4
+adb shell pm grant app.filemate android.permission.READ_MEDIA_IMAGES
+adb shell pm grant app.filemate android.permission.READ_MEDIA_VIDEO
+
 probe full
 adb shell pm revoke app.filemate android.permission.READ_MEDIA_VIDEO
 adb shell pm revoke app.filemate android.permission.READ_MEDIA_VISUAL_USER_SELECTED || true

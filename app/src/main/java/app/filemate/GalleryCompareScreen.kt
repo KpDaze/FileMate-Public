@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -62,17 +63,19 @@ fun GalleryCompareScreen(app: FileMateApp, resumed: Boolean, modifier: Modifier 
         saving = true
         scope.launch {
             try {
-                val updated = if(value) kept + match.key else kept - match.key
-                withContext(Dispatchers.IO) { app.store.state("gallery_compare_kept_v1",updated.toList().takeLast(2000).joinToString(",")) }
+                val updated = (if(value) kept + match.key else kept - match.key).toList().takeLast(2000).toSet()
+                withContext(Dispatchers.IO) { app.store.state("gallery_compare_kept_v1",updated.joinToString(",")) }
                 kept = updated;selected = null
                 message = if(value) "Kept all ${match.ids.size} images. This group is dismissed; files and assignments are unchanged." else "Group restored for review. Files and assignments are unchanged."
             } catch(e: Exception) { message = "Could not save that review. Try again." }
             finally { saving = false }
         }
     }
+    val listState = rememberLazyListState()
+    LaunchedEffect(selected?.key) { listState.scrollToItem(0) }
     val active = selected
     val comparisonItems = active?.ids?.mapNotNull { id -> result?.items?.find { it.identity == id } }.orEmpty()
-    LazyColumn(modifier.fillMaxSize(),contentPadding = PaddingValues(20.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyColumn(modifier.fillMaxSize(),state = listState,contentPadding = PaddingValues(20.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { TextButton(onClick = { back() }) { Text(if(active == null) "Gallery" else "Comparison results") } }
         item { Text(active?.kind?.title ?: "Compare images",fontSize = 28.sp,fontWeight = FontWeight.Bold) }
         if(active == null) {

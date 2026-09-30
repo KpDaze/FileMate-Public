@@ -24,7 +24,16 @@ class GalleryProbeActivity : ComponentActivity() {
                 check(!Environment.isExternalStorageManager()) { "Gallery proof must not use All files access" }
                 val store = app.store
                 val access = MediaAccess.read(this@GalleryProbeActivity)
-                if(phase == "stage3b") {
+                if(phase == "stage3c") {
+                    verifyStage3c(app)
+                } else if(phase == "stage3c-denied") {
+                    check(!access.images && !access.selected)
+                    check(runCatching { GalleryCompareScanner(this@GalleryProbeActivity).scan {} }.isFailure)
+                } else if(phase == "stage3c-selected") {
+                    check(access.selected && !access.images)
+                    val output = GalleryCompareScanner(this@GalleryProbeActivity).scan {}
+                    check(output.items.isEmpty() && output.matches.isEmpty())
+                } else if(phase == "stage3b") {
                     verifyStage3b(store)
                 } else if(phase == "selected") {
                     check(access.selected && !access.images && !access.videos)
@@ -106,6 +115,32 @@ class GalleryProbeActivity : ComponentActivity() {
                 result.writeText(JSONObject().put("passed",false).put("phase",phase).put("error",e.stackTraceToString()).toString())
             } finally { runOnUiThread { finish() } }
         }
+    }
+    private suspend fun verifyStage3c(app: FileMateApp) {
+        var media = emptyList<IndexedMedia>()
+        for(attempt in 0..29) {
+            media = GalleryScanner(this).scan().filter { it.name.startsWith("FileMateCompare_") }
+            if(media.size == 3) break
+            delay(500)
+        }
+        check(media.size == 3) { "Expected three comparison fixtures, got ${media.map { it.name }}" }
+        val before = media.associate { it.uri to hash(it) }
+        app.store.saveMediaSnapshot(media)
+        val project = app.store.createProject("Comparison fixture project")
+        app.store.assignMedia(media.single { it.name == "FileMateCompare_copy.png" }.identity,project)
+        val assignments = app.store.mediaItems().associate { it.identity to it.projectId }
+        val output = GalleryCompareScanner(this).scan {}
+        check(output.checked == 3 && output.skipped == 0 && output.visualChecked == 3) { "Unexpected scan coverage: $output" }
+        ImageMatchKind.entries.forEach { kind -> check(output.matches.count { it.kind == kind } == 1) { "Expected one $kind group: ${output.matches}" } }
+        val exact = output.matches.single { it.kind == ImageMatchKind.EXACT }
+        check(exact.ids.toSet() == media.filter { it.name != "FileMateCompare_v2.png" }.map { it.identity }.toSet())
+        val again = GalleryCompareScanner(this).scan {}
+        check(again.matches.toSet() == output.matches.toSet()) { "Rescan changed groups" }
+        app.store.state("gallery_compare_kept_v1",exact.key)
+        Store(this).use { check(it.state("gallery_compare_kept_v1") == exact.key) }
+        app.store.state("gallery_compare_kept_v1","")
+        check(app.store.mediaItems().associate { it.identity to it.projectId } == assignments)
+        check(media.associate { it.uri to hash(it) } == before) { "Comparison changed fixture bytes" }
     }
     private suspend fun verifyStage3b(store: Store) {
         var media = emptyList<IndexedMedia>()
