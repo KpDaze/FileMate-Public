@@ -43,6 +43,11 @@ import java.util.Date
 
 @Composable
 fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, modifier: Modifier = Modifier, sortingOnly: Boolean = false, initialGroup: String? = null, onBack: () -> Unit) {
+    var comparing by remember { mutableStateOf(false) }
+    if(comparing) {
+        GalleryCompareScreen(app,resumed,modifier) { comparing = false }
+        return
+    }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val progress by app.gallery.collectAsStateWithLifecycle()
@@ -111,6 +116,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         }
                     }
                 }
+                TextButton(enabled = access.any && !progress.running,onClick = { comparing = true }) { Text("Compare images") }
                 Row(Modifier.fillMaxWidth(),verticalAlignment = Alignment.CenterVertically) {
                     Text("${filtered.size} visible",modifier = Modifier.weight(1f),fontSize = 13.sp)
                     TextButton(enabled = access.any && !progress.running,onClick = { selected = null;clearSelection();app.refreshGallery() }) {
@@ -226,7 +232,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
 }
 
 @Composable
-private fun MediaThumbnail(item: IndexedMedia, modifier: Modifier, large: Boolean = false) {
+internal fun MediaThumbnail(item: IndexedMedia, modifier: Modifier, large: Boolean = false) {
     val context = LocalContext.current
     var bitmap by remember(item.identity,item.generation,item.modified,item.size,large) { mutableStateOf<Bitmap?>(null) }
     var failed by remember(item.identity,item.generation,item.modified,item.size,large) { mutableStateOf(false) }
