@@ -10,7 +10,7 @@ import java.security.MessageDigest
 
 /** A deliberate, cancellable read-only scan. No writes to MediaStore or shared media. */
 data class ImageComparisonResult(val matches: List<ImageMatch>, val items: List<IndexedMedia>, val checked: Int,
-    val skipped: Int, val visualChecked: Int, val total: Int)
+    val skipped: Int, val visualChecked: Int, val total: Int, val fingerprints: Map<String,String> = emptyMap())
 class GalleryCompareScanner(private val context: Context) {
     suspend fun scan(progress: (String) -> Unit): ImageComparisonResult {
         val access = MediaAccess.read(context)
@@ -61,7 +61,7 @@ class GalleryCompareScanner(private val context: Context) {
         }
         progress("Comparing images…")
         val matches = GalleryCompareRules.matches(signatures) { job.ensureActive() }
-        return ImageComparisonResult(matches,snapshot,signatures.size,skipped,visualChecked,snapshot.size)
+        return ImageComparisonResult(matches,snapshot,signatures.size,skipped,visualChecked,snapshot.size,signatures.associate { it.id to it.sha256 })
     }
     companion object {
         fun stamp(item: IndexedMedia) = "${item.generation}:${item.modified}:${item.size}:${item.name}:${item.relativePath}"

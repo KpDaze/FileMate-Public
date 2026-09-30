@@ -43,7 +43,7 @@ import java.util.Date
 
 @Composable
 fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, modifier: Modifier = Modifier, sortingOnly: Boolean = false, initialGroup: String? = null, onBack: () -> Unit) {
-    var comparing by remember { mutableStateOf(false) }
+    var comparing by rememberSaveable { mutableStateOf(false) }
     if(comparing) {
         GalleryCompareScreen(app,resumed,modifier) { comparing = false }
         return
