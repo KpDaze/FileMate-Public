@@ -171,7 +171,14 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         TextButton(enabled = selection.isNotEmpty(),onClick = {
                             val ids=selection.toList();scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(ids,true) };clearSelection();app.changed() }
                         }) { Text("Favourite") }
+                        if(filter == "Favourites") TextButton(enabled = selection.isNotEmpty(),onClick = {
+                            val ids=selection.toList();scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(ids,false) };clearSelection();app.changed() }
+                        }) { Text("Unfavourite") }
                         TextButton(enabled = selection.isNotEmpty(),onClick = { albumPicker=selection.toList() }) { Text("Add to album") }
+                        if(filter == "Albums" && albumFilter != null) TextButton(enabled = selection.isNotEmpty(),onClick = {
+                            val ids=selection.toList();val album=albumFilter!!
+                            scope.launch { withContext(Dispatchers.IO) { app.store.removeMediaFromAlbum(album,ids) };clearSelection();app.changed() }
+                        }) { Text("Remove from album") }
                         TextButton(onClick = { clearSelection() }) { Text("Cancel selection") }
                     }
                 } else TextButton(enabled = filtered.isNotEmpty(),onClick = { selecting = true }) { Text("Select photos") }
