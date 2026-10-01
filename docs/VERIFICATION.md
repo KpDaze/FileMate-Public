@@ -171,3 +171,16 @@ Passed: debug build/install (Gradle 2m 30s); the `stage3c` native probe with all
 Failure: UI script line 103 searched upward for `Exact duplicates (1)` after Back had reset the results list to its header. The failure XML shows the header, Comparison Trash and Scan again; category controls are below that viewport. Corrected that search to scroll down, matching the existing native `LaunchedEffect(selected?.key, trashView)` scroll reset. No app or preview change was required. Python compilation, shell syntax and `git diff --check` passed for the correction; the corrected UI path has not run on Android.
 
 Not reached: manual-selection/confirmed-assignment UI, FileMate/system Trash cancellation, real Trash and restore, restart recovery, final restored hashes/project metadata, and denied/zero-grant selected-access phases. Do not call 3C complete. A second focused run needs separate explicit approval under AGENTS.md; none has been dispatched. Preview stays version 11 and phone stays Stage 2/code 3. No signed package or personal-file change. Earlier zero-run/no-approval statements above are historical and superseded by this record.
+
+
+## Stage 3C corrected Android proof passed — 1 October 2026 Brisbane
+
+Kel's previously approved single corrected Stage 3C run was launched once on the public repository after the connector could not directly dispatch the manual workflow. A temporary one-shot push trigger was used solely for that approval and then removed; the Gallery emulator workflow is manual approval-only again.
+
+[Run 36835325123](https://github.com/KpDaze/FileMate-Public/actions/runs/36835325123), job 110281231750, tested public-main commit `5a6a40a24136650a4844fd06a06e68d1fed45041` on standard `ubuntu-latest`, Android 15/API 35, x86_64 with KVM and `reactivecircus/android-emulator-runner@v2`. It completed successfully. The push path forced the same focused Stage 3C configuration as `stage3c_only=true`, `stage3b_only=false`.
+
+The native Stage 3C probe passed without All files access. The UI completed exact/similar/possible-version review, side-by-side and larger views, Back, persistent Keep all and restored review. It then reached and passed the previously untested action section: manual image selection; assignment cancellation and confirmed project assignment; FileMate Trash cancellation; Android Trash cancellation and confirmed real Trash; rescanning; comparison Trash; process/recovery flow; restore selection and cancellation; and confirmed Android restore.
+
+The final UI result reported `stage3c_ui=passed`, `exact_similar_versions=true`, `keep_all_rescan_restore=true`, `trash_restore_hashes_unchanged=true`, `confirmed_assignment=true`, and `trash_cancel_and_restore=true`. Final native phases `stage3c-after`, `stage3c-denied` and `stage3c-selected` each reported `passed=true` with `all_files_access=false`.
+
+This closes Stage 3C native fixture verification. It does not replace physical-phone acceptance, including real non-empty selected-photo grants and manufacturer-specific behaviour. No signed phone package or personal media was used.
