@@ -1,12 +1,6 @@
 name: FileMate Gallery Android proof
 
 on:
-  # Temporary push trigger for Kel's already-approved single Stage 3C proof run.
-  # The verify job is gated by the one-shot commit marker below.
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/android-gallery-proof.yml'
   # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
     inputs:
@@ -30,7 +24,6 @@ concurrency:
 
 jobs:
   verify:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[stage3c-one-shot]')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -48,7 +41,7 @@ jobs:
           test -e /dev/kvm
       - name: Verify read-only Gallery with disposable media
         env:
-          FILEMATE_STAGE3C_ONLY: ${{ (github.event_name == 'push' || inputs.stage3c_only) && '1' || '0' }}
+          FILEMATE_STAGE3C_ONLY: ${{ inputs.stage3c_only && '1' || '0' }}
           FILEMATE_STAGE3B_ONLY: ${{ inputs.stage3b_only && '1' || '0' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
