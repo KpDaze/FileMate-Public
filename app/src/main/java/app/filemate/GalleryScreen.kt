@@ -59,6 +59,8 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     var creatingAlbum by remember { mutableStateOf(false) }
     var albumName by remember { mutableStateOf("") }
     var albumPicker by remember { mutableStateOf<List<String>?>(null) }
+    var editingAlbum by remember { mutableStateOf<GalleryAlbum?>(null) }
+    var deletingAlbum by remember { mutableStateOf<GalleryAlbum?>(null) }
     var selected by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var assigning by remember { mutableStateOf(false) }
@@ -144,6 +146,12 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         albums.forEach { a -> FilterChip(selected = albumFilter == a.id,onClick = { albumFilter=a.id;clearSelection() },label = { Text("${a.name} (${a.itemCount})") }) }
                     }
                     TextButton(onClick = { albumName="";creatingAlbum=true }) { Text("Create album") }
+                    albums.firstOrNull { it.id == albumFilter }?.let { current ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { albumName=current.name;editingAlbum=current }) { Text("Rename album") }
+                            TextButton(onClick = { deletingAlbum=current }) { Text("Delete album") }
+                        }
+                    }
                     if(albums.isEmpty()) Text("Create a FileMate album, then add photos or videos. Files stay in their original locations.",fontSize = 12.sp)
                 }
                 if(filter == "Projects") Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -257,6 +265,25 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
             dismissButton = { TextButton(enabled = !assigning,onClick = { review = null }) { Text("Cancel") } })
     }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null },title = { Text("Gallery") },text = { Text(message) },confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
+
+    editingAlbum?.let { album ->
+        AlertDialog(onDismissRequest={ editingAlbum=null },title={ Text("Rename Gallery album") },
+            text={ OutlinedTextField(value=albumName,onValueChange={albumName=it},label={Text("Album name")},singleLine=true) },
+            confirmButton={ Button(enabled=albumName.isNotBlank(),onClick={
+                val name=albumName;scope.launch { runCatching { withContext(Dispatchers.IO) { app.store.renameGalleryAlbum(album.id,name) } }
+                    .onSuccess { editingAlbum=null;albumName="";app.changed() }
+                    .onFailure { error=it.message ?: "Couldn't rename album." } }
+            }) { Text("Rename") } },
+            dismissButton={ TextButton(onClick={editingAlbum=null}) { Text("Cancel") } })
+    }
+    deletingAlbum?.let { album ->
+        AlertDialog(onDismissRequest={deletingAlbum=null},title={Text("Delete ${album.name}?")},
+            text={Text("This removes only the FileMate album. Its ${album.itemCount} visible ${if(album.itemCount==1) "item" else "items"} stay in Gallery and remain in their original locations.")},
+            confirmButton={ Button(onClick={ scope.launch { runCatching { withContext(Dispatchers.IO) { app.store.deleteGalleryAlbum(album.id) } }
+                .onSuccess { deletingAlbum=null;albumFilter=null;app.changed() }
+                .onFailure { error=it.message ?: "Couldn't delete album." } } }) { Text("Delete album") } },
+            dismissButton={TextButton(onClick={deletingAlbum=null}) {Text("Cancel")}})
+    }
     if(creatingAlbum) AlertDialog(onDismissRequest = { creatingAlbum=false },title = { Text("Create Gallery album") },
         text = { OutlinedTextField(value=albumName,onValueChange={ albumName=it },label={ Text("Album name") },singleLine=true) },
         confirmButton = { Button(enabled=albumName.isNotBlank(),onClick={
