@@ -257,6 +257,28 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
             dismissButton = { TextButton(enabled = !assigning,onClick = { review = null }) { Text("Cancel") } })
     }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null },title = { Text("Gallery") },text = { Text(message) },confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } }) }
+    if(creatingAlbum) AlertDialog(onDismissRequest = { creatingAlbum=false },title = { Text("Create Gallery album") },
+        text = { OutlinedTextField(value=albumName,onValueChange={ albumName=it },label={ Text("Album name") },singleLine=true) },
+        confirmButton = { Button(enabled=albumName.isNotBlank(),onClick={
+            val name=albumName;scope.launch {
+                runCatching { withContext(Dispatchers.IO) { app.store.createGalleryAlbum(name) } }
+                    .onSuccess { creatingAlbum=false;albumName="";filter="Albums";albumFilter=it;app.changed() }
+                    .onFailure { error=it.message ?: "Couldn't create album." }
+            }
+        }) { Text("Create") } },
+        dismissButton = { TextButton(onClick={ creatingAlbum=false }) { Text("Cancel") } })
+    albumPicker?.let { ids ->
+        AlertDialog(onDismissRequest={ albumPicker=null },title={ Text("Add to album") },
+            text={ LazyColumn { items(albums,key={it.id}) { a -> TextButton(onClick={
+                scope.launch { runCatching { withContext(Dispatchers.IO) { app.store.addMediaToAlbum(a.id,ids) } }
+                    .onSuccess { albumPicker=null;clearSelection();app.changed() }
+                    .onFailure { error=it.message ?: "Couldn't add these items." } }
+            }) { Text("${a.name} (${a.itemCount})") } }
+                item { TextButton(onClick={ albumPicker=null;albumName="";creatingAlbum=true }) { Text("Create new album") } }
+            } },
+            confirmButton={},dismissButton={ TextButton(onClick={albumPicker=null}) { Text("Cancel") } })
+    }
+
 }
 
 @Composable
@@ -285,25 +307,3 @@ internal fun MediaThumbnail(item: IndexedMedia, modifier: Modifier, large: Boole
 }
 private fun mediaDate(millis: Long): String = if(millis > 0) DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(millis)) else "Date unavailable"
 private fun duration(millis: Long): String = "%d:%02d".format(millis / 60000,(millis / 1000) % 60)
-
-    if(creatingAlbum) AlertDialog(onDismissRequest = { creatingAlbum=false },title = { Text("Create Gallery album") },
-        text = { OutlinedTextField(value=albumName,onValueChange={ albumName=it },label={ Text("Album name") },singleLine=true) },
-        confirmButton = { Button(enabled=albumName.isNotBlank(),onClick={
-            val name=albumName;scope.launch {
-                runCatching { withContext(Dispatchers.IO) { app.store.createGalleryAlbum(name) } }
-                    .onSuccess { creatingAlbum=false;albumName="";filter="Albums";albumFilter=it;app.changed() }
-                    .onFailure { error=it.message ?: "Couldn't create album." }
-            }
-        }) { Text("Create") } },
-        dismissButton = { TextButton(onClick={ creatingAlbum=false }) { Text("Cancel") } })
-    albumPicker?.let { ids ->
-        AlertDialog(onDismissRequest={ albumPicker=null },title={ Text("Add to album") },
-            text={ LazyColumn { items(albums,key={it.id}) { a -> TextButton(onClick={
-                scope.launch { runCatching { withContext(Dispatchers.IO) { app.store.addMediaToAlbum(a.id,ids) } }
-                    .onSuccess { albumPicker=null;clearSelection();app.changed() }
-                    .onFailure { error=it.message ?: "Couldn't add these items." } }
-            }) { Text("${a.name} (${a.itemCount})") } }
-                item { TextButton(onClick={ albumPicker=null;albumName="";creatingAlbum=true }) { Text("Create new album") } }
-            } },
-            confirmButton={},dismissButton={ TextButton(onClick={albumPicker=null}) { Text("Cancel") } })
-    }
