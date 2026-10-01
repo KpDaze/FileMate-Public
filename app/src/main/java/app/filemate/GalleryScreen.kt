@@ -55,6 +55,10 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     var filter by rememberSaveable { mutableStateOf(if(sortingOnly) "Needs Sorting" else if(initialProjectId == null) "Unassigned" else "Projects") }
     var groupFilter by rememberSaveable { mutableStateOf(initialGroup) }
     var projectFilter by rememberSaveable { mutableStateOf(initialProjectId) }
+    var albumFilter by rememberSaveable { mutableStateOf<Long?>(null) }
+    var creatingAlbum by remember { mutableStateOf(false) }
+    var albumName by remember { mutableStateOf("") }
+    var albumPicker by remember { mutableStateOf<List<String>?>(null) }
     var selected by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var assigning by remember { mutableStateOf(false) }
@@ -77,6 +81,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
         value = if(progress.ready && !progress.running) withContext(Dispatchers.IO) { app.store.mediaItems() } else emptyList()
     }
     val projects by produceState(emptyList<Project>(),revision) { value = withContext(Dispatchers.IO) { app.store.projects() } }
+    val favourites by produceState(emptySet<String>(),revision) { value = withContext(Dispatchers.IO) { app.store.favouriteMediaIds() } }
+    val albums by produceState(emptyList<GalleryAlbum>(),revision) { value = withContext(Dispatchers.IO) { app.store.galleryAlbums() } }
+    val albumIds by produceState(emptySet<String>(),revision,albumFilter) {
+        value = albumFilter?.let { withContext(Dispatchers.IO) { app.store.albumMediaIds(it) } } ?: emptySet()
+    }
     // A resumed refresh must finish before retained data or thumbnails can be shown.
     val visible = if(resumed && progress.ready && !progress.running && access.any) all else emptyList()
     val groups = screenshotGroups(visible,unassignedOnly = filter == "Needs Sorting")
@@ -88,6 +97,8 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
             "Screenshots", "Needs Sorting" -> it.identity in groupedIds
             "Downloads" -> it.clues.downloads
             "Projects" -> it.projectId != null && (projectFilter == null || it.projectId == projectFilter)
+            "Favourites" -> it.identity in favourites
+            "Albums" -> albumFilter != null && it.identity in albumIds
             else -> true
         }
     }
@@ -124,9 +135,16 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     }
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Unassigned","All Gallery","Camera","Screenshots","Needs Sorting","Downloads","Projects").forEach { choice ->
+                    listOf("Unassigned","All Gallery","Favourites","Albums","Camera","Screenshots","Needs Sorting","Downloads","Projects").forEach { choice ->
                         FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;groupFilter = null;assignmentMessage = null;clearSelection() },label = { Text(choice) })
                     }
+                }
+                if(filter == "Albums") {
+                    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        albums.forEach { a -> FilterChip(selected = albumFilter == a.id,onClick = { albumFilter=a.id;clearSelection() },label = { Text("${a.name} (${a.itemCount})") }) }
+                    }
+                    TextButton(onClick = { albumName="";creatingAlbum=true }) { Text("Create album") }
+                    if(albums.isEmpty()) Text("Create a FileMate album, then add photos or videos. Files stay in their original locations.",fontSize = 12.sp)
                 }
                 if(filter == "Projects") Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = projectFilter == null,onClick = { projectFilter = null;clearSelection() },label = { Text("Any project") })
@@ -142,6 +160,10 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     Text("${selection.size} selected",fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(enabled = selection.isNotEmpty(),onClick = { openReview(selection.toList()) }) { Text("Assign selected") }
+                        TextButton(enabled = selection.isNotEmpty(),onClick = {
+                            val ids=selection.toList();scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(ids,true) };clearSelection();app.changed() }
+                        }) { Text("Favourite") }
+                        TextButton(enabled = selection.isNotEmpty(),onClick = { albumPicker=selection.toList() }) { Text("Add to album") }
                         TextButton(onClick = { clearSelection() }) { Text("Cancel selection") }
                     }
                 } else TextButton(enabled = filtered.isNotEmpty(),onClick = { selecting = true }) { Text("Select photos") }
@@ -172,6 +194,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                         }
                     }
                     Text(item.name,maxLines = 1,overflow = TextOverflow.Ellipsis,fontSize = 11.sp,modifier = Modifier.padding(6.dp,4.dp))
+                    if(item.identity in favourites) Text("★ Favourite",fontSize = 10.sp,color = MaterialTheme.colorScheme.primary,modifier = Modifier.padding(6.dp,0.dp))
                     Text(mediaDate(item.sortTime),fontSize = 10.sp,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp))
                     item.projectName?.let { Text(it,fontSize = 11.sp,color = MaterialTheme.colorScheme.primary,modifier = Modifier.padding(6.dp,0.dp,6.dp,6.dp)) }
                 }
@@ -189,6 +212,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 item { Text("Screenshot clue: ${detail.clues.screenshotConfidence}\n${detail.clues.explanation}",fontSize = 12.sp) }
                 item { Text("Project: ${detail.projectName ?: "Unassigned"}\n${detail.projectConfidence}. Assignment changes only FileMate's records.",fontSize = 13.sp) }
                 item { Button(onClick = { openReview(listOf(detail.identity)) }) { Text("Assign to project") } }
+                item { TextButton(onClick = {
+                    val id=detail.identity;val makeFavourite=id !in favourites
+                    scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(listOf(id),makeFavourite) };app.changed() }
+                }) { Text(if(detail.identity in favourites) "Remove from Favourites" else "Add to Favourites") } }
+                item { TextButton(onClick = { albumPicker=listOf(detail.identity) }) { Text("Add to album") } }
             }
         },confirmButton = { TextButton(enabled = !assigning,onClick = { selected = null }) { Text("Done") } })
     review?.let { ids ->
@@ -257,3 +285,25 @@ internal fun MediaThumbnail(item: IndexedMedia, modifier: Modifier, large: Boole
 }
 private fun mediaDate(millis: Long): String = if(millis > 0) DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(millis)) else "Date unavailable"
 private fun duration(millis: Long): String = "%d:%02d".format(millis / 60000,(millis / 1000) % 60)
+
+    if(creatingAlbum) AlertDialog(onDismissRequest = { creatingAlbum=false },title = { Text("Create Gallery album") },
+        text = { OutlinedTextField(value=albumName,onValueChange={ albumName=it },label={ Text("Album name") },singleLine=true) },
+        confirmButton = { Button(enabled=albumName.isNotBlank(),onClick={
+            val name=albumName;scope.launch {
+                runCatching { withContext(Dispatchers.IO) { app.store.createGalleryAlbum(name) } }
+                    .onSuccess { creatingAlbum=false;albumName="";filter="Albums";albumFilter=it;app.changed() }
+                    .onFailure { error=it.message ?: "Couldn't create album." }
+            }
+        }) { Text("Create") } },
+        dismissButton = { TextButton(onClick={ creatingAlbum=false }) { Text("Cancel") } })
+    albumPicker?.let { ids ->
+        AlertDialog(onDismissRequest={ albumPicker=null },title={ Text("Add to album") },
+            text={ LazyColumn { items(albums,key={it.id}) { a -> TextButton(onClick={
+                scope.launch { runCatching { withContext(Dispatchers.IO) { app.store.addMediaToAlbum(a.id,ids) } }
+                    .onSuccess { albumPicker=null;clearSelection();app.changed() }
+                    .onFailure { error=it.message ?: "Couldn't add these items." } }
+            }) { Text("${a.name} (${a.itemCount})") } }
+                item { TextButton(onClick={ albumPicker=null;albumName="";creatingAlbum=true }) { Text("Create new album") } }
+            } },
+            confirmButton={},dismissButton={ TextButton(onClick={albumPicker=null}) { Text("Cancel") } })
+    }
