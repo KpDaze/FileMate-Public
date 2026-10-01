@@ -15,7 +15,7 @@ data class HistoryItem(val title: String, val detail: String, val time: Long)
 data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
     val fileCount: Int)
 
-class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 5) {
+class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 6) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -31,6 +31,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         createCleanupTables(db)
         createFileActionTable(db)
         createGalleryTables(db)
+        createGalleryOrganisationTables(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         db.beginTransaction()
@@ -44,6 +45,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             if(old < 3) createCleanupTables(db)
             if(old < 4) createFileActionTable(db)
             if(old < 5) createGalleryTables(db)
+            if(old < 6) createGalleryOrganisationTables(db)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
