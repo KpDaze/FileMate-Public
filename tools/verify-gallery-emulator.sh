@@ -20,6 +20,15 @@ probe() {
   echo "$result"
   python3 -c 'import json,sys; r=json.loads(sys.argv[1]); assert r.get("passed") is True,r' "$result"
 }
+if [[ "${FILEMATE_STAGE3D_ONLY:-0}" == "1" ]]; then
+  for name in FileMateCompare_v1.png FileMateCompare_v2.png FileMateCompare_copy.png; do
+    publish "$name" "/sdcard/Download/$name"
+  done
+  adb shell pm grant app.filemate android.permission.READ_MEDIA_IMAGES
+  probe stage3d
+  python3 tools/gallery-stage3d-ui-smoke.py
+  exit 0
+fi
 if [[ "${FILEMATE_STAGE3C_ONLY:-0}" == "1" ]]; then
   for name in FileMateCompare_v1.png FileMateCompare_v2.png FileMateCompare_copy.png; do
     publish "$name" "/sdcard/Download/$name"
