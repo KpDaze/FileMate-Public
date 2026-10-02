@@ -171,6 +171,9 @@ class GalleryProbeActivity : ComponentActivity() {
         Store(this,name).use { current ->
             val project=current.createProject("Migration project")
             current.state("migration-proof","kept")
+            current.writableDatabase.execSQL("DROP TABLE media_album_items")
+            current.writableDatabase.execSQL("DROP TABLE media_albums")
+            current.writableDatabase.execSQL("DROP TABLE media_favourites")
             current.writableDatabase.version=5
             check(project > 0)
         }
