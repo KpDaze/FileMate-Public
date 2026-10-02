@@ -4,6 +4,11 @@ on:
   # Dispatch only after Kel approves this specific emulator run.
   workflow_dispatch:
     inputs:
+      stage3d_only:
+        description: 'Focused Stage 3D favourites/albums proof; no older emulator flows'
+        type: boolean
+        required: false
+        default: false
       stage3c_only:
         description: 'Focused Stage 3C image comparison probe and UI; no older emulator flows'
         type: boolean
@@ -41,6 +46,7 @@ jobs:
           test -e /dev/kvm
       - name: Verify read-only Gallery with disposable media
         env:
+          FILEMATE_STAGE3D_ONLY: ${{ inputs.stage3d_only && '1' || '0' }}
           FILEMATE_STAGE3C_ONLY: ${{ inputs.stage3c_only && '1' || '0' }}
           FILEMATE_STAGE3B_ONLY: ${{ inputs.stage3b_only && '1' || '0' }}
         uses: reactivecircus/android-emulator-runner@v2
