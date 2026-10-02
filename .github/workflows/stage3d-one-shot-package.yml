@@ -1,0 +1,34 @@
+name: FileMate one-shot Stage 3D phone payload
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/stage3d-one-shot-package.yml
+permissions:
+  contents: read
+jobs:
+  package:
+    if: contains(github.event.head_commit.message, '[stage3d-package-one-shot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Build and verify Stage 3D payload
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+          mkdir stage3d-package
+          cp app/build/outputs/apk/debug/app-debug.apk stage3d-package/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" stage3d-package/
+          printf '%s\n' "$GITHUB_SHA" > stage3d-package/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: filemate-stage3d-phone-payload
+          path: stage3d-package
+          retention-days: 1
+          if-no-files-found: error
