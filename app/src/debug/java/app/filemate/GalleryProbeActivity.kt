@@ -24,7 +24,9 @@ class GalleryProbeActivity : ComponentActivity() {
                 check(!Environment.isExternalStorageManager()) { "Gallery proof must not use All files access" }
                 val store = app.store
                 val access = MediaAccess.read(this@GalleryProbeActivity)
-                if(phase == "stage3c") {
+                if(phase == "stage3d") {
+                    verifyStage3d(app)
+                } else if(phase == "stage3c") {
                     verifyStage3c(app)
                 } else if(phase == "stage3c-after") {
                     val fresh = GalleryScanner(this@GalleryProbeActivity).scan()
@@ -125,6 +127,63 @@ class GalleryProbeActivity : ComponentActivity() {
             } finally { runOnUiThread { finish() } }
         }
     }
+    private suspend fun verifyStage3d(app: FileMateApp) {
+        var media = emptyList<IndexedMedia>()
+        for(attempt in 0..29) {
+            media = GalleryScanner(this).scan().filter { it.name.startsWith("FileMateCompare_") }
+            if(media.size == 3) break
+            delay(500)
+        }
+        check(media.size == 3) { "Stage 3D expected three fixtures, got ${media.map { it.name }}" }
+        val before = media.associate { it.uri to hash(it) }
+        app.store.saveMediaSnapshot(media)
+        val ids = media.map { it.identity }
+        app.store.setMediaFavourite(listOf(ids[0],ids[1],ids[0]),true)
+        check(app.store.favouriteMediaIds() == setOf(ids[0],ids[1]))
+        app.store.setMediaFavourite(listOf(ids[1]),false)
+        check(app.store.favouriteMediaIds() == setOf(ids[0]))
+        val album = app.store.createGalleryAlbum(" Stage   3D album ")
+        check(app.store.galleryAlbums().single { it.id == album }.name == "Stage 3D album")
+        app.store.addMediaToAlbum(album,listOf(ids[0],ids[1],ids[0]))
+        check(app.store.albumMediaIds(album) == setOf(ids[0],ids[1]))
+        check(app.store.galleryAlbums().single { it.id == album }.itemCount == 2)
+        app.store.removeMediaFromAlbum(album,listOf(ids[1]))
+        check(app.store.albumMediaIds(album) == setOf(ids[0]))
+        app.store.renameGalleryAlbum(album,"Renamed album")
+        check(app.store.galleryAlbums().single { it.id == album }.name == "Renamed album")
+        app.store.saveMediaSnapshot(media)
+        check(app.store.favouriteMediaIds() == setOf(ids[0]))
+        check(app.store.albumMediaIds(album) == setOf(ids[0]))
+        Store(this).use { reopened ->
+            check(reopened.favouriteMediaIds() == setOf(ids[0]))
+            check(reopened.albumMediaIds(album) == setOf(ids[0]))
+        }
+        app.store.deleteGalleryAlbum(album)
+        check(app.store.galleryAlbums().none { it.id == album })
+        check(app.store.mediaItems().map { it.identity }.toSet().containsAll(ids))
+        check(media.associate { it.uri to hash(it) } == before) { "Stage 3D metadata actions changed fixture bytes" }
+        verifyStage3dMigration()
+    }
+
+    private fun verifyStage3dMigration() {
+        val name = "gallery-stage3d-migration.db"
+        deleteDatabase(name)
+        Store(this,name).use { current ->
+            val project=current.createProject("Migration project")
+            current.state("migration-proof","kept")
+            current.writableDatabase.version=5
+            check(project > 0)
+        }
+        Store(this,name).use { upgraded ->
+            check(upgraded.readableDatabase.version == 6)
+            check(upgraded.projects().single().name == "Migration project")
+            check(upgraded.state("migration-proof") == "kept")
+            check(upgraded.galleryAlbums().isEmpty())
+            check(upgraded.favouriteMediaIds().isEmpty())
+        }
+        deleteDatabase(name)
+    }
+
     private suspend fun verifyStage3c(app: FileMateApp) {
         var media = emptyList<IndexedMedia>()
         for(attempt in 0..29) {
@@ -228,7 +287,7 @@ class GalleryProbeActivity : ComponentActivity() {
         old.writableDatabase.version = 4
         old.close()
         Store(this,name).use { upgraded ->
-            check(upgraded.readableDatabase.version == 5)
+            check(upgraded.readableDatabase.version == 6)
             check(upgraded.projects().single().id == project && upgraded.projects().single().fileCount == 1)
             check(upgraded.hub().single().packageName == "fixture.app")
             check(upgraded.state("proof") == "preserved")
