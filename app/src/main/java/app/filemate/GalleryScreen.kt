@@ -138,7 +138,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Unassigned","All Gallery","Favourites","Albums","Camera","Screenshots","Needs Sorting","Downloads","Projects").forEach { choice ->
-                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;groupFilter = null;assignmentMessage = null;clearSelection() },label = { Text(choice) })
+                        FilterChip(selected = filter == choice,onClick = { filter = choice;projectFilter = null;groupFilter = null;if(choice != "Albums") albumFilter = null;assignmentMessage = null;clearSelection() },label = { Text(choice) })
                     }
                 }
                 if(filter == "Albums") {
