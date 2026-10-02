@@ -71,12 +71,16 @@ fun Store.galleryAlbums(): List<GalleryAlbum> = synchronized(this) {
 }
 
 fun Store.createGalleryAlbum(rawName: String): Long = synchronized(this) {
-    val name=cleanAlbumName(rawName);val now=System.currentTimeMillis()
-    val id=writableDatabase.insertOrThrow("media_albums",null,ContentValues().apply {
-        put("name",name);put("created",now);put("updated",now)
-    })
-    history("Gallery album created","$name. No media moved.")
-    id
+    val name=cleanAlbumName(rawName);val now=System.currentTimeMillis();val db=writableDatabase
+    db.beginTransaction()
+    try {
+        val id=db.insertOrThrow("media_albums",null,ContentValues().apply {
+            put("name",name);put("created",now);put("updated",now)
+        })
+        history("Gallery album created","$name. No media moved.")
+        db.setTransactionSuccessful()
+        id
+    } finally { db.endTransaction() }
 }
 
 fun Store.addMediaToAlbum(albumId: Long, identities: Collection<String>) = synchronized(this) {
@@ -123,18 +127,25 @@ fun Store.removeMediaFromAlbum(albumId: Long, identities: Collection<String>) = 
 
 fun Store.renameGalleryAlbum(albumId: Long, rawName: String) = synchronized(this) {
     val name=cleanAlbumName(rawName);val db=writableDatabase;val now=System.currentTimeMillis()
-    val old=db.rawQuery("SELECT name FROM media_albums WHERE id=?",arrayOf(albumId.toString())).use {
-        require(it.moveToFirst()) { "Album no longer exists." };it.getString(0)
-    }
-    db.update("media_albums",ContentValues().apply { put("name",name);put("updated",now) },"id=?",arrayOf(albumId.toString()))
-    history("Gallery album renamed","$old → $name. Files unchanged.")
+    db.beginTransaction()
+    try {
+        val old=db.rawQuery("SELECT name FROM media_albums WHERE id=?",arrayOf(albumId.toString())).use {
+            require(it.moveToFirst()) { "Album no longer exists." };it.getString(0)
+        }
+        check(db.update("media_albums",ContentValues().apply { put("name",name);put("updated",now) },"id=?",arrayOf(albumId.toString())) == 1)
+        history("Gallery album renamed","$old → $name. Files unchanged.")
+        db.setTransactionSuccessful()
+    } finally { db.endTransaction() }
 }
 
 fun Store.deleteGalleryAlbum(albumId: Long) = synchronized(this) {
-    val db=writableDatabase
-    val album=db.rawQuery("SELECT name FROM media_albums WHERE id=?",arrayOf(albumId.toString())).use {
-        require(it.moveToFirst()) { "Album no longer exists." };it.getString(0)
-    }
-    db.delete("media_albums","id=?",arrayOf(albumId.toString()))
-    history("Gallery album deleted","$album. Media stayed in place and remains in Gallery.")
+    val db=writableDatabase;db.beginTransaction()
+    try {
+        val album=db.rawQuery("SELECT name FROM media_albums WHERE id=?",arrayOf(albumId.toString())).use {
+            require(it.moveToFirst()) { "Album no longer exists." };it.getString(0)
+        }
+        check(db.delete("media_albums","id=?",arrayOf(albumId.toString())) == 1)
+        history("Gallery album deleted","$album. Media stayed in place and remains in Gallery.")
+        db.setTransactionSuccessful()
+    } finally { db.endTransaction() }
 }
