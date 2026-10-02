@@ -1,15 +1,7 @@
 name: FileMate Android build
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/android-build.yml
-      - app/**
-      - build.gradle.kts
-      - settings.gradle.kts
-      - gradle/**
-      - gradle.properties
+  # Manual only. Do not run builds merely because development commits are pushed.
   workflow_dispatch:
 
 permissions:
