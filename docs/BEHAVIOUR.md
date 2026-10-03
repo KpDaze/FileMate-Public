@@ -26,7 +26,7 @@ The monitoring catch-up path still does not identify a same-path rewrite that pr
 
 Filename clues plus nearby selected AI use can raise source confidence. Filename alone is medium confidence. Timing alone is low confidence, never proof of source. Unrecognised files, installers and obvious receipt/bank/statement filenames are excluded from AI Recent. Catch-up cannot reconstruct past app activity and does not pretend to do so. Unknown generic filenames may therefore remain excluded until the deliberate cleanup scan.
 
-The source classifier is deliberately preliminary: time correlation can produce false suggestions. Projects are never invented. Stage 2 keeps source confidence separate from project confidence. Manual assignment confirms the project only in local metadata; it does not change the file. Cleanup moves and optional tidy names require a separate preview and Apply action.
+The source classifier is deliberately conservative: time correlation can produce false suggestions. Projects are never invented. Source confidence remains separate from project confidence. Live monitoring may automatically organise a file only when source evidence is High and the filename uniquely names one existing user-created project; it reuses the fingerprint-verified move journal and Undo. Anything ambiguous stays physically untouched in Needs Sorting. Manual file and Gallery assignments teach local filename clues for future Medium-confidence suggestions; learned clues never trigger an automatic move by themselves. Cleanup moves and optional tidy names remain preview-and-Apply actions.
 
 ## Read-only Gallery (Stage 3A)
 
