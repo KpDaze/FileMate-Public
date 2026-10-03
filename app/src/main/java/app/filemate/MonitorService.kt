@@ -186,6 +186,13 @@ class MonitorService : Service() {
     }
     @Synchronized private fun schedule(file: File) {
         if(closing || FileRules.temporary(file.name)) return
+        // FileMate's own organised destination is inside Documents and is watched for catch-up.
+        // Never feed those files back through live AI classification/automatic organisation.
+        @Suppress("DEPRECATION")
+        val managedRoot = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),"FileMate")
+        val canonical = runCatching { file.canonicalPath }.getOrNull()
+        val managedPath = runCatching { managedRoot.canonicalPath }.getOrNull()
+        if(canonical != null && managedPath != null && (canonical == managedPath || canonical.startsWith("$managedPath/"))) return
         val path = file.absolutePath
         pending.remove(path)?.cancel()
         pending[path] = scope.launch {
