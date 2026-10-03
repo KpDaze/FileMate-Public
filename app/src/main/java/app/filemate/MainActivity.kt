@@ -259,7 +259,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         item { Text(if(usageAllowed) "Stops after 30 minutes away from your selected AI apps." else "Without app activity access, sessions end 30 minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
                         if(sortingCount > 0) item { ActionRow("Needs Sorting","$sortingCount items need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         if(recent.isNotEmpty()) item { ActionRow("Recent detections","${recent.size} likely AI files · review source clues",Icons.Outlined.InsertDriveFile) { page = "Recent" } }
-                        item { Text("Project names and assignments stay in FileMate's local database. Files remain in their original locations.",color = Muted,fontSize = 12.sp) }
+                        item { Text("High-confidence AI downloads can be organised automatically. Uncertain files stay untouched in Needs Sorting.",color = Muted,fontSize = 12.sp) }
                     }
                     "Projects" -> {
                         item { Title("Projects", "Keep files together by what you're working on.") }
@@ -312,8 +312,8 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         }
                     }
                     "Needs Sorting" -> {
-                        item { Title("Needs Sorting", "Choose the project. FileMate won't guess.") }
-                        item { Text("Source confidence describes where a file may have come from. Project assignment stays separate and becomes confirmed only when you choose it.",fontSize = 13.sp,color = Muted) }
+                        item { Title("Needs Sorting", "Uncertain files wait here for you. High-confidence matches are handled automatically.") }
+                        item { Text("Source and project confidence are separate. FileMate only acts automatically when both are strong enough; otherwise the file stays here.",fontSize = 13.sp,color = Muted) }
                         if(projects.isEmpty()) item {
                             InfoCard("Create a project first", "You need somewhere to assign the selected files.",Icons.Outlined.CreateNewFolder) {
                                 TextButton(onClick = { editingProjectId = null;showProjectEditor = true }) { Text("Create project") }
@@ -414,7 +414,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                     }
                     "Recent" -> {
                         item { Title("Recent", "Likely AI files found on your phone.") }
-                        item { Text("All files stay in their original locations in this test. Uncertain sources need your review.",color = Muted,fontSize = 14.sp) }
+                        item { Text("Automatically organised files show their project. Uncertain files remain untouched for review.",color = Muted,fontSize = 14.sp) }
                         if(recent.isEmpty()) item { InfoCard("Nothing detected yet", "Launch a selected AI from the Hub, download a file, then come back here.",Icons.Outlined.InsertDriveFile) {} }
                         items(recent,key = { it.id }) { file -> FileRow(file) { detail = file } }
                     }
