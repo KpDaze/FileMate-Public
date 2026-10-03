@@ -94,7 +94,10 @@ fun Store.assignMedia(identity: String, projectId: Long?) = synchronized(this) {
         refreshCleanupCounts(db)
         if(projectId != null) {
             db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),projectId))
-            learnProjectAssignment(item[0] as String,projectId)
+            ProjectLearning.tokens(item[0]).forEach { token ->
+                db.execSQL("""INSERT INTO project_learning(token,project_id,hits) VALUES(?,?,1)
+                    ON CONFLICT(token,project_id) DO UPDATE SET hits=hits+1""",arrayOf(token,projectId))
+            }
         }
         history(if(projectId == null) "Gallery project cleared" else "Gallery assigned to $projectName", "${item[0]}. File unchanged.")
         db.setTransactionSuccessful()
