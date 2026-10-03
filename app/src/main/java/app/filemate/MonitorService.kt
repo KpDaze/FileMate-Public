@@ -201,7 +201,14 @@ class MonitorService : Service() {
                 if(stable >= 2) {
                     val now = System.currentTimeMillis()
                     val finding = FileRules.classify(file.name,activity.refresh(),now)
-                    app.store.observe(file,finding,"Live monitoring")
+                    val observed = app.store.observe(file,finding,"Live monitoring")
+                    if(observed) {
+                        val result = AutoSorter(app.store).trySort(file,finding)
+                        if(result != null && result.applied == 0 && (result.failed > 0 || result.skipped > 0)) {
+                            app.store.history("Automatic organisation left for review",
+                                result.messages.take(3).joinToString(" ").ifBlank { file.name })
+                        }
+                    }
                     app.changed()
                     return@launch
                 }
