@@ -216,6 +216,23 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
+    @Synchronized fun learnedProjectForFileName(fileName: String): ProjectMatch? {
+        val stem = fileName.substringBeforeLast('.',fileName).lowercase()
+        val tokens = stem.replace(Regex("[^\\p{L}\\p{N}]+")," ").trim().split(Regex("\\s+")).filter { it.length >= 3 }.toSet()
+        if(tokens.isEmpty()) return null
+        val scores = projects().mapNotNull { project ->
+            val projectTokens = project.name.lowercase().replace(Regex("[^\\p{L}\\p{N}]+")," ").trim()
+                .split(Regex("\\s+")).filter { it.length >= 3 }.toSet()
+            val overlap = tokens.intersect(projectTokens).size
+            if(overlap == 0) null else project to overlap
+        }
+        val best = scores.maxOfOrNull { it.second } ?: return null
+        val winners = scores.filter { it.second == best }
+        if(winners.size != 1) return null
+        val project = winners.single().first
+        return ProjectMatch(project.id,project.name,"Medium","Filename resembles a project name; suggestion only.")
+    }
+
     @Synchronized fun assignedPaths(): Set<String> = readableDatabase.rawQuery("SELECT path FROM files WHERE project_id IS NOT NULL",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
