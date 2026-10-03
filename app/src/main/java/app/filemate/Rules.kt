@@ -58,3 +58,11 @@ object ProjectRules {
         return exact.singleOrNull()
     }
 }
+
+
+object ProjectLearning {
+    private val ignored = setOf("chatgpt","qwen","grok","claude","gemini","dall","export","download","file","image","document")
+    fun tokens(name: String): List<String> = name.substringBeforeLast('.',name).lowercase()
+        .replace(Regex("[^\\p{L}\\p{N}]+")," ").trim().split(Regex("\\s+"))
+        .filter { it.length >= 3 && it !in ignored && !it.all(Char::isDigit) }.distinct()
+}
