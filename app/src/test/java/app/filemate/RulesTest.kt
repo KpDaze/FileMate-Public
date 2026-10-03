@@ -60,6 +60,16 @@ class RulesTest {
         assertNull(ProjectRules.classify("House_Renovation_plan.pdf",projects))
     }
 
+    @Test fun projectMatchingDoesNotGuessFromPartialOrGenericNames() {
+        val projects = listOf(
+            Project(1,"Life Map",0,0,0),
+            Project(2,"FileMate",0,0,0)
+        )
+        assertNull(ProjectRules.classify("ChatGPT_map_notes.pdf",projects))
+        assertNull(ProjectRules.classify("Qwen_export.pdf",projects))
+        assertEquals(1,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
