@@ -124,7 +124,12 @@ class FileMateApp : Application() {
                     if(!FileRules.temporary(file.name)) {
                         indexed++
                         // Only use names in catch-up: past source activity cannot be reconstructed reliably.
-                        if(store.observe(file,FileRules.classify(file.name,null,System.currentTimeMillis()),"Catch-up",baseline)) found++
+                        val finding = FileRules.classify(file.name,null,System.currentTimeMillis())
+                        if(store.observe(file,finding,"Catch-up",baseline)) {
+                            found++
+                            // Catch-up has no trustworthy live AI-app context. It records the file for review
+                            // but never performs an automatic move.
+                        }
                     }
                 }
                 if(complete) store.state(key,System.currentTimeMillis().toString())
