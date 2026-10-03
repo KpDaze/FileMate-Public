@@ -104,7 +104,7 @@ class MonitorService : Service() {
                         // Close the gap between initial indexing and watcher installation.
                         app.reconcile()
                         app.store.state("session_active","true")
-                        app.store.history("Monitoring started", "Download events are being watched. Your files remain unchanged.")
+                        app.store.history("Monitoring started", "Download events are being watched. High-confidence AI downloads may be organised automatically; uncertain files stay untouched.")
                     }
                     activity.hubLaunch(pkg,label)
                     if(ticker == null) ticker = scope.launch {
