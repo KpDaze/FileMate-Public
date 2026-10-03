@@ -481,7 +481,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
-                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Phone scans change nothing; reviewed moves and tidy renames are recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. High-confidence live AI downloads may be organised automatically; uncertain files stay untouched. Phone cleanup remains review-first. Every move is recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
                         item { Text("FileMate ${BuildConfig.VERSION_NAME} · Android 11 or newer",fontSize = 12.sp,color = Muted) }
                     }
                 }
@@ -494,7 +494,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             Text("${file.source ?: "Unknown source"} · ${file.confidence} source confidence",fontWeight = FontWeight.SemiBold)
             Text(file.reason)
             Text(if(file.projectName == null) "Project: Not assigned." else "Project: ${file.projectName} · ${file.projectConfidence.lowercase()} by you.")
-            Text("Original name and location unchanged.")
+            Text(if(file.projectConfidence == "Confirmed" && file.path.contains("/Documents/FileMate/")) "FileMate organised this file into its project folder. The move is recorded in Activity with Undo." else "This file has not been automatically moved by FileMate.")
             Text(file.path,fontSize = 12.sp)
             Text("${file.size} bytes · ${file.via}",fontSize = 12.sp,color = Muted)
         }
