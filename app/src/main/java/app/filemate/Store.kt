@@ -15,7 +15,7 @@ data class HistoryItem(val title: String, val detail: String, val time: Long)
 data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
     val fileCount: Int)
 
-class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 7) {
+class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 8) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -33,6 +33,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         createGalleryTables(db)
         createGalleryOrganisationTables(db)
         createProjectLearningTable(db)
+        createDriveRuleTable(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         db.beginTransaction()
@@ -48,6 +49,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             if(old < 5) createGalleryTables(db)
             if(old < 6) createGalleryOrganisationTables(db)
             if(old < 7) createProjectLearningTable(db)
+            if(old < 8) createDriveRuleTable(db)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -221,6 +223,18 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
+    @Synchronized fun projectStorageRule(projectId: Long): StorageRule = readableDatabase.rawQuery(
+        "SELECT rule FROM project_storage_rules WHERE project_id=?",arrayOf(projectId.toString())
+    ).use { if(it.moveToFirst()) DriveRules.parse(it.getString(0)) else StorageRule.PHONE_ONLY }
+
+    @Synchronized fun setProjectStorageRule(projectId: Long, rule: StorageRule) {
+        require(readableDatabase.rawQuery("SELECT 1 FROM projects WHERE id=?",arrayOf(projectId.toString())).use { it.moveToFirst() }) { "Project no longer exists" }
+        writableDatabase.insertWithOnConflict("project_storage_rules",null,ContentValues().apply {
+            put("project_id",projectId);put("rule",rule.name)
+        },SQLiteDatabase.CONFLICT_REPLACE)
+        history("Project storage rule changed","Future files for this project: ${rule.label}. Existing files were not moved.")
+    }
+
     @Synchronized fun assignedPaths(): Set<String> = readableDatabase.rawQuery("SELECT path FROM files WHERE project_id IS NOT NULL",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
@@ -421,6 +435,10 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         if(best.second.second < 2 || best.second.first < 2) return null
         if(runner != null && runner.second == best.second) return null
         return best.first
+    }
+
+    private fun createDriveRuleTable(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS project_storage_rules(project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,rule TEXT NOT NULL DEFAULT 'PHONE_ONLY')")
     }
 
     private fun createProjectLearningTable(db: SQLiteDatabase) {
