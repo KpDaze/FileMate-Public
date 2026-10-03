@@ -43,6 +43,23 @@ class RulesTest {
         assertTrue(FileRules.changed(stamp,FileStamp(11,123)))
         assertTrue(FileRules.changed(stamp,FileStamp(10,124)))
     }
+    @Test fun projectMatchingRequiresOneUnambiguousFullProjectName() {
+        val projects = listOf(
+            Project(1,"Killerfect Security",0,0,0),
+            Project(2,"House",0,0,0)
+        )
+        val match = ProjectRules.classify("ChatGPT_Killerfect-Security_quote.pdf",projects)
+        assertNotNull(match);assertEquals(1,match!!.projectId);assertEquals("High",match.confidence)
+        assertNull(ProjectRules.classify("ChatGPT_notes.pdf",projects))
+    }
+    @Test fun overlappingProjectNamesDoNotAutoChoose() {
+        val projects = listOf(
+            Project(1,"House",0,0,0),
+            Project(2,"House Renovation",0,0,0)
+        )
+        assertNull(ProjectRules.classify("House_Renovation_plan.pdf",projects))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
