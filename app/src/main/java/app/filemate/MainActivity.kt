@@ -302,6 +302,25 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
+                            val storageRule by produceState(StorageRule.PHONE_ONLY,revision,selectedProject.id) {
+                                value = withContext(Dispatchers.IO) { app.store.projectStorageRule(selectedProject.id) }
+                            }
+                            item {
+                                OutlinedCard(Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("Future file storage",fontWeight = FontWeight.SemiBold)
+                                        Text("Phone only is the default. Existing files never move when this rule changes.",fontSize = 12.sp,color = Muted)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            StorageRule.entries.forEach { rule ->
+                                                FilterChip(selected = storageRule == rule,onClick = {
+                                                    uiScope.launch { withContext(Dispatchers.IO) { app.store.setProjectStorageRule(selectedProject.id,rule) };app.changed() }
+                                                },label = { Text(rule.label) })
+                                            }
+                                        }
+                                        if(storageRule == StorageRule.PHONE_AND_DRIVE) Text("Google Drive connection is not configured yet. FileMate will not remove or upload anything until a verified Drive connection exists.",fontSize = 12.sp,color = Muted)
+                                    }
+                                }
+                            }
                             if(projectMediaCount > 0) item { ActionRow("Project Gallery","$projectMediaCount indexed photos or videos · access may limit what is visible",Icons.Outlined.PhotoLibrary) { gallerySorting = false;galleryGroup = null;galleryProjectId = selectedProject.id;page = "Gallery" } }
                             if(projectFiles.isEmpty() && projectMediaCount == 0) item {
                                 InfoCard("No files assigned", "Assign files in Needs Sorting or photos and videos in Gallery.",Icons.Outlined.DriveFileMove) {}
