@@ -92,7 +92,10 @@ fun Store.assignMedia(identity: String, projectId: Long?) = synchronized(this) {
         if(projectId == null) db.execSQL("UPDATE cleanup_entries SET flags=flags | ? WHERE path=? AND root='Downloads'",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD,item[1]))
         else db.execSQL("UPDATE cleanup_entries SET flags=flags & ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD.inv(),item[1]))
         refreshCleanupCounts(db)
-        if(projectId != null) db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),projectId))
+        if(projectId != null) {
+            db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),projectId))
+            learnProjectAssignment(item[0] as String,projectId)
+        }
         history(if(projectId == null) "Gallery project cleared" else "Gallery assigned to $projectName", "${item[0]}. File unchanged.")
         db.setTransactionSuccessful()
     } finally { db.endTransaction() }
