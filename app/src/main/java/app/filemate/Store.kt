@@ -391,6 +391,18 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             put("title",title);put("detail",detail);put("time",time)
         })
     }
+    @Synchronized fun learnProjectAssignment(fileName: String, projectId: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            learningTokens(fileName).forEach { token ->
+                db.execSQL("""INSERT INTO project_learning(token,project_id,hits) VALUES(?,?,1)
+                    ON CONFLICT(token,project_id) DO UPDATE SET hits=hits+1""",arrayOf(token,projectId))
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     @Synchronized fun learnedProject(fileName: String): ProjectMatch? {
         val tokens = learningTokens(fileName)
         if(tokens.isEmpty()) return null
