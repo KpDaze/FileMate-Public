@@ -37,3 +37,24 @@ class SessionClock(private val timeoutMs: Long = 30 * 60_000L) {
     fun touch(elapsed: Long) { lastAiActivity = elapsed }
     fun expired(elapsed: Long) = elapsed - lastAiActivity >= timeoutMs
 }
+
+
+data class ProjectMatch(val projectId: Long, val projectName: String, val confidence: String, val reason: String)
+
+object ProjectRules {
+    private fun words(value: String): List<String> = value.lowercase()
+        .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+        .trim().split(Regex("\\s+")).filter { it.length >= 2 }
+
+    fun classify(fileName: String, projects: List<Project>): ProjectMatch? {
+        val stemWords = words(fileName.substringBeforeLast('.', fileName)).toSet()
+        if(stemWords.isEmpty()) return null
+        val exact = projects.mapNotNull { project ->
+            val projectWords = words(project.name)
+            if(projectWords.isNotEmpty() && projectWords.all { it in stemWords })
+                ProjectMatch(project.id, project.name, "High", "Filename uniquely names the project.")
+            else null
+        }
+        return exact.singleOrNull()
+    }
+}
