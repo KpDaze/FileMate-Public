@@ -340,8 +340,17 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         items(needsSorting,key = { it.path }) { file ->
-                            FileRow(file,selected = file.path in sortingSelection) {
-                                sortingSelection = if(file.path in sortingSelection) sortingSelection - file.path else sortingSelection + file.path
+                            val learned by produceState<ProjectMatch?>(null,file.path,revision) {
+                                value = withContext(Dispatchers.IO) { app.store.learnedProject(file.name) }
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FileRow(file,selected = file.path in sortingSelection) {
+                                    sortingSelection = if(file.path in sortingSelection) sortingSelection - file.path else sortingSelection + file.path
+                                }
+                                learned?.let { suggestion ->
+                                    Text("Suggestion: ${suggestion.projectName} · learned from earlier assignments. Review before applying.",
+                                        fontSize = 11.sp,color = Muted,modifier = Modifier.padding(horizontal = 12.dp))
+                                }
                             }
                         }
                         if(needsSorting.isNotEmpty()) item {
