@@ -70,6 +70,11 @@ class RulesTest {
         assertEquals(1,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
     }
 
+    @Test fun projectLearningIgnoresProviderAndGenericNoise() {
+        assertEquals(listOf("killerfect","security","quote"),ProjectLearning.tokens("ChatGPT_Killerfect-Security_quote.pdf"))
+        assertEquals(emptyList<String>(),ProjectLearning.tokens("Qwen_export_20261004.pdf"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
