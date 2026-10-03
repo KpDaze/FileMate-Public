@@ -427,12 +427,7 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         db.execSQL("CREATE TABLE IF NOT EXISTS project_learning(token TEXT NOT NULL,project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,hits INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(token,project_id))")
         db.execSQL("CREATE INDEX IF NOT EXISTS project_learning_project ON project_learning(project_id)")
     }
-    private fun learningTokens(name: String): List<String> {
-        val ignored = setOf("chatgpt","qwen","grok","claude","gemini","dall","export","download","file","image","document")
-        return name.substringBeforeLast('.',name).lowercase()
-            .replace(Regex("[^\\p{L}\\p{N}]+")," ").trim().split(Regex("\\s+"))
-            .filter { it.length >= 3 && it !in ignored && !it.all(Char::isDigit) }.distinct()
-    }
+    private fun learningTokens(name: String): List<String> = ProjectLearning.tokens(name)
     private fun learnProjectTokens(db: SQLiteDatabase, path: String, projectId: Long) {
         learningTokens(File(path).name).forEach { token ->
             db.execSQL("""INSERT INTO project_learning(token,project_id,hits) VALUES(?,?,1)
