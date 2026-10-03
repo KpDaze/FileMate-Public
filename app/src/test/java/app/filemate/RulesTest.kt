@@ -75,6 +75,14 @@ class RulesTest {
         assertEquals(emptyList<String>(),ProjectLearning.tokens("Qwen_export_20261004.pdf"))
     }
 
+    @Test fun driveAfterUploadNeverRemovesLocalBeforeVerifiedSuccess() {
+        assertFalse(DriveRules.mayRemoveLocal(uploadVerified = false,driveAfterUpload = true))
+        assertFalse(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = false))
+        assertTrue(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = true))
+        assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse(null))
+        assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse("nonsense"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
