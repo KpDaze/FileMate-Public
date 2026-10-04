@@ -34,8 +34,8 @@ class GalleryFileOrganiser(private val store: Store, private val transfer: Verif
             source.path == target.path -> "Already at this location."
             else -> "Reviewed move to Pictures/FileMate/${FileNaming.folder(project.name)}."
         }
-        return GalleryMovePlan(item.identity,source?.path ?: item.currentPath,target.path,item.name,target.name,item.size,
-            fingerprint?.hash.orEmpty(),supported,note)
+        return GalleryMovePlan(item.identity,source?.path ?: item.currentPath,target.path,item.name,target.name,
+            fingerprint?.size ?: item.size,fingerprint?.hash.orEmpty(),supported,note)
     }
 
     fun apply(plan: GalleryMovePlan, projectId: Long): String? {
