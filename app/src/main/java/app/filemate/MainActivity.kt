@@ -340,7 +340,18 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 InfoCard("No files assigned", "Assign files in Needs Sorting or photos and videos in Gallery.",Icons.Outlined.DriveFileMove) {}
                             }
                             items(projectFiles,key = { it.path }) { file ->
-                                FileRow(file) { detail = file }
+                                Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                    FileRow(file) { detail = file }
+                                    if(storageRule != StorageRule.PHONE_ONLY) {
+                                        TextButton(enabled=externalStorage!=null,onClick={
+                                            uiScope.launch {
+                                                val problem=withContext(Dispatchers.IO) { ProjectProviderUpload(activity,app.store).upload(file,storageRule) }
+                                                app.changed()
+                                                if(problem!=null) error=problem
+                                            }
+                                        }) { Text(if(storageRule==StorageRule.DRIVE_AFTER_UPLOAD) "Copy to storage, then remove verified local copy" else "Copy to storage") }
+                                    }
+                                }
                             }
                         }
                     }
