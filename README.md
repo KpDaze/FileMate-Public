@@ -10,7 +10,7 @@ The recovered core organiser now connects live AI download detection to conserva
 
 Stage 3 Gallery functionality already present in native source includes screenshot intake, project assignment, exact/similar/version comparison, recoverable Android Trash/restore, Favourites and Albums.
 
-Google Drive remains the substantial external Version 1 gap. The approved Phone-only default and per-project Phone + Drive preference are now represented locally, but neither FileMate repository contains Google OAuth client configuration. FileMate therefore does not claim a working Drive connection yet and will not upload or remove local files until a real Google client is configured and upload success can be verified.
+The original optional Drive goal is being implemented without a developer Drive API because the recovered specification forbids assuming a free tier is acceptable. FileMate now uses Android user-granted document-provider folders instead: it can remember a selected provider folder, browse/search its top level, create folders and make verified copies. If the installed Google Drive app exposes a folder through Android’s picker, it can be selected there. Provider-only storage removes a local file only after the external copy is read back and hash-verified.
 
 No emulator or GitHub Actions workflow is automatically launched by the recovery work.
 
