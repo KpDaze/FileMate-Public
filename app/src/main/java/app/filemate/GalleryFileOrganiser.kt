@@ -43,8 +43,19 @@ class GalleryFileOrganiser(private val store: Store, private val transfer: Verif
         val source = File(plan.sourcePath);val target = File(plan.targetPath)
         if(target.parentFile?.mkdirs() == false && target.parentFile?.isDirectory != true) return "Destination folder could not be created."
         return try {
-            transfer.move(source,target,plan.size,plan.hash)
-            store.completeGalleryMove(plan.identity,plan.sourcePath,plan.targetPath,plan.targetName,projectId)
+            val project = store.projects().firstOrNull { it.id == projectId } ?: return "Project no longer exists."
+            val journal = OrganisePlan(plan.sourcePath,plan.targetPath,plan.sourceName,plan.targetName,"Gallery",
+                plan.size,source.lastModified(),plan.hash,project.id,project.name,true,"Reviewed Gallery move")
+            val actionId = store.beginFileAction(journal)
+            try {
+                transfer.move(source,target,plan.size,plan.hash)
+                store.completeFileAction(actionId,target.length(),target.lastModified())
+                store.completeGalleryMove(plan.identity,plan.sourcePath,plan.targetPath,plan.targetName,projectId)
+            } catch(e: Exception) {
+                if(source.isFile && !target.exists()) store.failFileAction(actionId,e.message ?: "Gallery move failed")
+                else store.reviewFileAction(actionId,e.message ?: "Gallery move needs review")
+                throw e
+            }
             null
         } catch(e: Exception) { e.message ?: "Media move failed. The original was not silently replaced." }
     }
