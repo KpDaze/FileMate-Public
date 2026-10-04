@@ -228,11 +228,16 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
     ).use { if(it.moveToFirst()) DriveRules.parse(it.getString(0)) else StorageRule.PHONE_ONLY }
 
     @Synchronized fun setProjectStorageRule(projectId: Long, rule: StorageRule) {
-        require(readableDatabase.rawQuery("SELECT 1 FROM projects WHERE id=?",arrayOf(projectId.toString())).use { it.moveToFirst() }) { "Project no longer exists" }
-        writableDatabase.insertWithOnConflict("project_storage_rules",null,ContentValues().apply {
-            put("project_id",projectId);put("rule",rule.name)
-        },SQLiteDatabase.CONFLICT_REPLACE)
-        history("Project storage rule changed","Future files for this project: ${rule.label}. Existing files were not moved.")
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            require(db.rawQuery("SELECT 1 FROM projects WHERE id=?",arrayOf(projectId.toString())).use { it.moveToFirst() }) { "Project no longer exists" }
+            db.insertWithOnConflict("project_storage_rules",null,ContentValues().apply {
+                put("project_id",projectId);put("rule",rule.name)
+            },SQLiteDatabase.CONFLICT_REPLACE)
+            insertHistory(db,"Project storage rule changed","Future files for this project: ${rule.label}. Existing files were not moved.",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
 
     @Synchronized fun assignedPaths(): Set<String> = readableDatabase.rawQuery("SELECT path FROM files WHERE project_id IS NOT NULL",null).use { c -> buildSet {
