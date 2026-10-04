@@ -67,7 +67,7 @@ class RulesTest {
         )
         assertNull(ProjectRules.classify("ChatGPT_map_notes.pdf",projects))
         assertNull(ProjectRules.classify("Qwen_export.pdf",projects))
-        assertEquals(1,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
+        assertEquals(1L,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
     }
 
     @Test fun autoSortRequiresBothHighSourceAndUnambiguousProjectEvidence() {
