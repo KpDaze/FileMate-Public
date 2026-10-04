@@ -75,3 +75,17 @@ Use disposable files only for first acceptance:
 7. Change a project's Future file storage between Phone only and Phone + Drive. Existing files must not move. Until Google OAuth is genuinely configured, no upload or local removal should occur.
 
 Do not use personal camera photos or important work files for first acceptance. Automatic camera organisation remains out of scope.
+
+
+## Optional Android storage-provider check
+
+This route uses Android's system folder picker, not a FileMate developer cloud API.
+1. Setup → Optional storage folder → Choose folder.
+2. If Google Drive is offered by Android, choose a disposable test folder there. Otherwise choose another disposable provider/local folder.
+3. Browse the selected folder in FileMate and create a disposable subfolder.
+4. Set a temporary project's storage rule to Phone + selected storage.
+5. Copy one disposable project file. Confirm the local file remains.
+6. For the selected-storage-after-verified-copy rule, use a disposable file only. FileMate must read the provider copy back and verify its SHA-256 before removing the local copy; any verification/read failure must keep the local file.
+7. Disconnect the provider folder. Core local FileMate must continue normally.
+
+No Google Cloud project, OAuth client, developer Drive API, API key or network permission is part of this route.
