@@ -78,4 +78,5 @@ fun Store.recordProviderUpload(source: File, destination: Uri, providerName: Str
     history("File copied to external storage",
         "${source.name} → ${providerName}${projectName?.let { " / $it" }.orEmpty()}. Verified copy; local file kept.")
     state("provider_uri:${source.absolutePath}",destination.toString())
+    projectId?.let { db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),it)) }
 }
