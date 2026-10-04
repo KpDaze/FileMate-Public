@@ -76,7 +76,7 @@ fun Store.recordProviderUpload(source: File, destination: Uri, providerName: Str
     val db=writableDatabase;db.beginTransaction()
     try {
         val projectName=projectId?.let { id -> db.rawQuery("SELECT name FROM projects WHERE id=?",arrayOf(id.toString())).use { if(it.moveToFirst()) it.getString(0) else null } }
-        insertHistory(db,"File copied to external storage",
+        addHistory(db,"File copied to external storage",
             "${source.name} → ${providerName}${projectName?.let { " / $it" }.orEmpty()}. Verified copy; local file kept.",System.currentTimeMillis())
         db.insertWithOnConflict("state",null,android.content.ContentValues().apply { put("key","provider_uri:${source.absolutePath}");put("value",destination.toString()) },android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
         projectId?.let { db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),it)) }
