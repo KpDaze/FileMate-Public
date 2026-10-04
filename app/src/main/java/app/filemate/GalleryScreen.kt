@@ -253,6 +253,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(listOf(id),makeFavourite) };app.changed() }
                 }) { Text(if(detail.identity in favourites) "Remove from Favourites" else "Add to Favourites") } }
                 item { TextButton(onClick = { albumPicker=listOf(detail.identity) }) { Text("Add to album") } }
+                item { TextButton(onClick = { moveItem=detail;moveProjectId=detail.projectId;moveTidy=false;movePlan=null;selected=null }) { Text("Move / rename file…") } }
             }
         },confirmButton = { TextButton(enabled = !assigning,onClick = { selected = null }) { Text("Done") } })
     review?.let { ids ->
