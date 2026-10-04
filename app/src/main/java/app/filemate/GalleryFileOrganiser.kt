@@ -76,8 +76,10 @@ fun Store.completeGalleryMove(identity: String, oldPath: String, newPath: String
         val projectName=db.rawQuery("SELECT name FROM projects WHERE id=?",arrayOf(projectId.toString())).use {
             require(it.moveToFirst()) { "Project no longer exists." };it.getString(0)
         }
+        // The next Gallery refresh obtains a fresh MediaStore identity/path for the moved file.
+        // Keep the old row unavailable rather than pretending its content URI still identifies the new path.
         db.update("media",ContentValues().apply {
-            put("current_path",newPath);put("name",newName);put("project_id",projectId);put("project_confidence","Confirmed")
+            put("available",0);put("project_id",projectId);put("project_confidence","Confirmed")
         },"identity=?",arrayOf(identity))
         db.delete("files","path=?",arrayOf(oldPath))
         db.insertWithOnConflict("files",null,ContentValues().apply {
