@@ -128,6 +128,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val fileActions by produceState(emptyList<FileActionRecord>(),revision) { value = withContext(Dispatchers.IO) { app.store.fileActions() } }
     val ignored by produceState("0",revision) { value = withContext(Dispatchers.IO) { app.store.state("ignored") ?: "0" } }
     val lastCheck by produceState<String?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.state("last_check") } }
+    val monitorTimeout by produceState(MonitoringSettings.DEFAULT_MINUTES,revision) {
+        value = withContext(Dispatchers.IO) { MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes")) }
+    }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
     val usageAllowed = remember(permissionTick) { Access.usage(activity) }
     val notificationsAllowed = remember(permissionTick) {
@@ -487,6 +490,22 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         item { PermissionCard("Monitoring notification",notificationsAllowed,"A quiet status notification lets you stop a session. It disappears when the session ends.","Allow notification") {
                             if(Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } }
+                        item { Text("Monitoring",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item {
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Stop after AI inactivity",fontWeight = FontWeight.SemiBold)
+                                    Text("Default is 30 minutes. Changing this affects future monitoring sessions.",fontSize = 12.sp,color = Muted)
+                                    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        MonitoringSettings.allowedMinutes.forEach { minutes ->
+                                            FilterChip(selected = monitorTimeout == minutes,onClick = {
+                                                app.scope.launch { app.store.state("monitor_timeout_minutes",minutes.toString());app.store.history("Monitoring timeout changed","Future sessions stop after $minutes minutes of AI inactivity.");app.changed() }
+                                            },label = { Text("$minutes min") })
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         item { Text("Extra scan folders",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
                         item { Text("Downloads, Documents, Camera, Pictures, Movies and Music are included automatically when file access is allowed. Add any other shared folder you want included in deliberate scans.",fontSize = 13.sp,color = Muted) }
                         items(selectedFolders,key = { it.uri }) { folder ->
@@ -509,7 +528,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
-                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. High-confidence live AI downloads may be organised automatically; uncertain files stay untouched. Phone cleanup remains review-first. Every move is recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: $monitorTimeout minutes of AI inactivity. High-confidence live AI downloads may be organised automatically; uncertain files stay untouched. Phone cleanup remains review-first. Every move is recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
                         item { Text("Drive",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
                         item { InfoCard("Google Drive not connected","Phone-only FileMate is fully local. Drive needs a Google OAuth client before FileMate can safely connect, browse or upload.",Icons.Outlined.CloudOff) {
                             Text("No local file will be removed for Drive unless an upload is later verified successful.",fontSize = 12.sp,color = Muted,modifier = Modifier.padding(top = 6.dp))
