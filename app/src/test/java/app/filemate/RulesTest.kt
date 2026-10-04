@@ -79,6 +79,7 @@ class RulesTest {
         assertFalse(DriveRules.mayRemoveLocal(uploadVerified = false,driveAfterUpload = true))
         assertFalse(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = false))
         assertTrue(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = true))
+        assertEquals(StorageRule.DRIVE_AFTER_UPLOAD,DriveRules.parse("DRIVE_AFTER_UPLOAD"))
         assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse(null))
         assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse("nonsense"))
     }
