@@ -415,8 +415,8 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
                 put("source",finding.source);put("confidence",finding.confidence);put("reason",finding.reason);put("via",via)
             })
             if(!baseline && !finding.candidate) {
-                val count = (state("ignored")?.toLongOrNull() ?: 0) + 1
-                state("ignored",count.toString())
+                val count = db.rawQuery("SELECT value FROM state WHERE key='ignored'",null).use { if(it.moveToFirst()) it.getString(0).toLongOrNull() ?: 0 else 0 } + 1
+                db.insertWithOnConflict("state",null,ContentValues().apply { put("key","ignored");put("value",count.toString()) },SQLiteDatabase.CONFLICT_REPLACE)
             }
             db.setTransactionSuccessful()
             return !baseline && finding.candidate
