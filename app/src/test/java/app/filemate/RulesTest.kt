@@ -70,6 +70,15 @@ class RulesTest {
         assertEquals(1,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
     }
 
+    @Test fun autoSortRequiresBothHighSourceAndUnambiguousProjectEvidence() {
+        val projects = listOf(Project(1,"Life Map",0,0,0))
+        val project = ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)
+        assertEquals("High",project?.confidence)
+        assertEquals("High",FileRules.classify("ChatGPT_Life_Map_notes.pdf",AiContext("ChatGPT","x",now-1000),now).confidence)
+        assertEquals("Medium",FileRules.classify("ChatGPT_Life_Map_notes.pdf",qwen,now).confidence)
+        assertNull(ProjectRules.classify("ChatGPT_notes.pdf",projects))
+    }
+
     @Test fun projectLearningIgnoresProviderAndGenericNoise() {
         assertEquals(listOf("killerfect","security","quote"),ProjectLearning.tokens("ChatGPT_Killerfect-Security_quote.pdf"))
         assertEquals(emptyList<String>(),ProjectLearning.tokens("Qwen_export_20261004.pdf"))
