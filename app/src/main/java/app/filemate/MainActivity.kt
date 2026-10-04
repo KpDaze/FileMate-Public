@@ -510,6 +510,10 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
                         item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. High-confidence live AI downloads may be organised automatically; uncertain files stay untouched. Phone cleanup remains review-first. Every move is recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Drive",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item { InfoCard("Google Drive not connected","Phone-only FileMate is fully local. Drive needs a Google OAuth client before FileMate can safely connect, browse or upload.",Icons.Outlined.CloudOff) {
+                            Text("No local file will be removed for Drive unless an upload is later verified successful.",fontSize = 12.sp,color = Muted,modifier = Modifier.padding(top = 6.dp))
+                        } }
                         item { Text("FileMate ${BuildConfig.VERSION_NAME} · Android 11 or newer",fontSize = 12.sp,color = Muted) }
                     }
                 }
