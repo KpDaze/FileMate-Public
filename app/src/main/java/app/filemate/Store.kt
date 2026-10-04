@@ -423,6 +423,10 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         } finally { db.endTransaction() }
     }
 
+    internal fun addHistory(db: SQLiteDatabase, title: String, detail: String, time: Long = System.currentTimeMillis()) {
+        insertHistory(db,title,detail,time)
+    }
+
     private fun detectedFile(c: android.database.Cursor) = DetectedFile(
         id = c.getLong(0), name = c.getString(1), path = c.getString(2), size = c.getLong(3),
         time = c.getLong(4), source = c.getString(5), confidence = c.getString(6),
