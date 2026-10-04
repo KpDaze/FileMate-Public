@@ -43,3 +43,5 @@ Do not mark Version 1 complete merely because Stages 1–3D exist. Compare the a
 - Reviewed file naming now has a local preference; automatic high-confidence moves preserve downloaded names.
 - Screenshot groups may show review-only project suggestions when repeated local assignment patterns agree.
 - No OCR dependency has been added. OCR remains optional and must be fully on-device/no-metered-cost if introduced.
+- Optional external storage now uses Android user-granted document-provider folders, with verified copies and no developer API/OAuth/network permission. A provider-only option removes a local file only after the external copy is read back and hash-verified.
+- Reviewed Gallery move/rename uses the existing verified transfer journal and Activity/Undo safeguards; camera media is never automatically selected.
