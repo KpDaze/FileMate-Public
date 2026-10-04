@@ -240,6 +240,17 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         } finally { db.endTransaction() }
     }
 
+    @Synchronized fun markLocalRemovedAfterProviderCopy(path: String, name: String) {
+        val db=writableDatabase;db.beginTransaction()
+        try {
+            db.delete("files","path=?",arrayOf(path))
+            db.delete("cleanup_entries","path=?",arrayOf(path))
+            db.execSQL("UPDATE media SET available=0 WHERE current_path=?",arrayOf(path))
+            insertHistory(db,"Local copy removed after verified external copy","$name. External copy was verified first.",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     @Synchronized fun assignedPaths(): Set<String> = readableDatabase.rawQuery("SELECT path FROM files WHERE project_id IS NOT NULL",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
