@@ -246,6 +246,20 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
     @Synchronized fun knownAiPaths(): Set<String> = readableDatabase.rawQuery("SELECT DISTINCT path FROM observations",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
+    @Synchronized fun externalStorageFolder(): GrantedStorageFolder? {
+        val uri=state("external_storage_tree")?.takeIf { it.isNotBlank() } ?: return null
+        val name=state("external_storage_name") ?: "Selected storage"
+        return GrantedStorageFolder(uri,name)
+    }
+    @Synchronized fun externalStorageFolder(folder: GrantedStorageFolder) {
+        state("external_storage_tree",folder.uri);state("external_storage_name",folder.name)
+        history("External storage folder connected","${folder.name}. Access is through Android's folder picker; FileMate has no cloud API key.")
+    }
+    @Synchronized fun clearExternalStorageFolder() {
+        state("external_storage_tree","");state("external_storage_name","")
+        history("External storage folder disconnected","FileMate will not use the previously selected provider folder.")
+    }
+
     @Synchronized fun selectedFolders(): List<SelectedFolder> = readableDatabase.rawQuery("SELECT uri,name FROM selected_folders ORDER BY added,name",null).use { c -> buildList {
         while(c.moveToNext()) add(SelectedFolder(c.getString(0),c.getString(1)))
     } }
