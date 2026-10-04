@@ -35,3 +35,11 @@ Prefer Android/on-device facilities, local storage/databases and local/open-sour
 ## Recovery warning
 
 Do not mark Version 1 complete merely because Stages 1–3D exist. Compare the app against the original target, especially automatic organisation, learning, Settings, screenshot grouping/classification, Gallery file actions, metadata depth and the optional no-metered-cost Drive route.
+
+
+## Recovery implementation notes
+
+- Monitoring timeout is now configurable locally with a safe 30-minute default.
+- Reviewed file naming now has a local preference; automatic high-confidence moves preserve downloaded names.
+- Screenshot groups may show review-only project suggestions when repeated local assignment patterns agree.
+- No OCR dependency has been added. OCR remains optional and must be fully on-device/no-metered-cost if introduced.
