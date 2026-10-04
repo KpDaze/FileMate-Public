@@ -44,6 +44,8 @@ class GalleryFileOrganiser(private val store: Store, private val transfer: Verif
         if(target.parentFile?.mkdirs() == false && target.parentFile?.isDirectory != true) return "Destination folder could not be created."
         return try {
             val project = store.projects().firstOrNull { it.id == projectId } ?: return "Project no longer exists."
+            if(!ContentFingerprint.matches(source,plan.size,plan.hash))
+                return "The media changed after review. Refresh Gallery and review the move again."
             val journal = OrganisePlan(plan.sourcePath,plan.targetPath,plan.sourceName,plan.targetName,"Gallery",
                 plan.size,source.lastModified(),plan.hash,project.id,project.name,true,"Reviewed Gallery move")
             val actionId = store.beginFileAction(journal)
