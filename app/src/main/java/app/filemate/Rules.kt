@@ -32,7 +32,7 @@ object FileRules {
     }
 }
 
-class SessionClock(private val timeoutMs: Long = 30 * 60_000L) {
+class SessionClock(private val timeoutMs: Long = MonitoringSettings.DEFAULT_MINUTES * 60_000L) {
     var lastAiActivity: Long = 0; private set
     fun touch(elapsed: Long) { lastAiActivity = elapsed }
     fun expired(elapsed: Long) = elapsed - lastAiActivity >= timeoutMs
@@ -65,4 +65,11 @@ object ProjectLearning {
     fun tokens(name: String): List<String> = name.substringBeforeLast('.',name).lowercase()
         .replace(Regex("[^\\p{L}\\p{N}]+")," ").trim().split(Regex("\\s+"))
         .filter { it.length >= 3 && it !in ignored && !it.all(Char::isDigit) }.distinct()
+}
+
+
+object MonitoringSettings {
+    const val DEFAULT_MINUTES = 30L
+    val allowedMinutes = listOf(15L,30L,45L,60L)
+    fun minutes(raw: String?): Long = raw?.toLongOrNull()?.takeIf { it in allowedMinutes } ?: DEFAULT_MINUTES
 }
