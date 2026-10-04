@@ -27,8 +27,9 @@ class ProviderUploader(private val context: Context, private val store: Store) {
                 // fingerprinted before and after the verified provider copy.
                 val fingerprint=ContentFingerprint.read(source) ?: return "Copy verified, but the local file changed afterward. It was kept."
                 check(fingerprint.size==result.bytes && fingerprint.hash==result.hash) { "Copy verified, but the local file changed afterward. It was kept." }
+                val path=source.absolutePath
                 check(source.delete()) { "Copy verified, but Android could not remove the local file. It was kept." }
-                store.history("Local copy removed after verified upload","${source.name}. External copy was verified before local removal.")
+                store.markLocalRemovedAfterProviderCopy(path,source.name)
             }
             null
         } catch(e: Exception) { e.message ?: "The external copy could not be completed. The local file was kept." }
