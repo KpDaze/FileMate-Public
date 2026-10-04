@@ -17,6 +17,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -317,10 +319,10 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
-                            val storageRule by produceState(StorageRule.PHONE_ONLY,revision,selectedProject.id) {
-                                value = withContext(Dispatchers.IO) { app.store.projectStorageRule(selectedProject.id) }
-                            }
                             item {
+                                val storageRule by produceState(StorageRule.PHONE_ONLY,revision,selectedProject.id) {
+                                    value = withContext(Dispatchers.IO) { app.store.projectStorageRule(selectedProject.id) }
+                                }
                                 OutlinedCard(Modifier.fillMaxWidth()) {
                                     Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Text("Future file storage",fontWeight = FontWeight.SemiBold)
