@@ -26,7 +26,7 @@ class AiActivity(private val context: Context, private val selected: () -> List<
     private var since = System.currentTimeMillis() - 1000
     private var foreground: String? = null
     private var last: AiContext? = null
-    private val clock = SessionClock()
+    private val clock = SessionClock(MonitoringSettings.minutes((context.applicationContext as FileMateApp).store.state("monitor_timeout_minutes")) * 60_000L)
     init { clock.touch(SystemClock.elapsedRealtime()) }
     @Synchronized fun hubLaunch(packageName: String, label: String) {
         clock.touch(SystemClock.elapsedRealtime())
@@ -113,7 +113,7 @@ class MonitorService : Service() {
                             if(!Environment.isExternalStorageManager()) { fail("File access was removed. Restore it in Setup.");break }
                             activity.refresh()
                             if(activity.expired()) {
-                                finishSession("Monitoring ended automatically", "No selected AI activity for 30 minutes. Reopening FileMate checks for missed files.");break
+                                finishSession("Monitoring ended automatically", "No selected AI activity for ${MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes"))} minutes. Reopening FileMate checks for missed files.");break
                             }
                             app.monitor.value = app.monitor.value.copy(usageAvailable = Access.usage(this@MonitorService))
                         }
@@ -132,7 +132,7 @@ class MonitorService : Service() {
         val stop = PendingIntent.getService(this,2,Intent(this,MonitorService::class.java).setAction(STOP),PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_monitor)
             .setContentTitle("FileMate is watching for AI downloads")
-            .setContentText("Stops automatically after 30 minutes of AI inactivity")
+            .setContentText("Stops automatically after ${MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes"))} minutes of AI inactivity")
             .setContentIntent(open).addAction(0,"Stop monitoring",stop)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).build()
     }
