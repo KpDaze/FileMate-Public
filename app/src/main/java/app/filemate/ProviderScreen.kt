@@ -23,16 +23,19 @@ fun ProviderScreen(app: FileMateApp, folder: GrantedStorageFolder, modifier: Mod
     var query by remember { mutableStateOf("") }
     var refresh by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
+    var loadError by remember { mutableStateOf<String?>(null) }
     var newFolder by remember { mutableStateOf(false) }
     var folderName by remember { mutableStateOf("") }
     val entries by produceState(emptyList<ProviderEntry>(),tree,query,refresh) {
-        value=withContext(Dispatchers.IO) { runCatching { ProviderBrowser(app).search(tree,query) }.getOrElse { emptyList() } }
+        val result=withContext(Dispatchers.IO) { runCatching { ProviderBrowser(app).search(tree,query) } }
+        result.onSuccess { loadError=null;value=it }.onFailure { loadError=it.message ?: "This storage folder is unavailable." }
     }
     Column(modifier.padding(20.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
         TextButton(onClick=onBack) { Icon(Icons.Outlined.ArrowBack,null);Spacer(Modifier.width(6.dp));Text("Setup") }
         Text(folder.name,fontSize=28.sp,fontWeight=FontWeight.Bold)
         Text("Android-granted storage folder. FileMate has no cloud API key.")
         OutlinedTextField(query,{query=it},label={Text("Search this folder")},singleLine=true,modifier=Modifier.fillMaxWidth())
+        loadError?.let { Text(it,color=MaterialTheme.colorScheme.error) }
         Row {
             TextButton(onClick={refresh++}) { Text("Refresh") }
             TextButton(onClick={folderName="";newFolder=true}) { Icon(Icons.Outlined.CreateNewFolder,null);Spacer(Modifier.width(5.dp));Text("New folder") }
