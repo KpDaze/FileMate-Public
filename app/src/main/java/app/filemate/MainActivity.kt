@@ -310,7 +310,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Text("Future file storage",fontWeight = FontWeight.SemiBold)
                                         Text("Phone only is the default. Existing files never move when this rule changes.",fontSize = 12.sp,color = Muted)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             StorageRule.entries.forEach { rule ->
                                                 FilterChip(selected = storageRule == rule,onClick = {
                                                     uiScope.launch { withContext(Dispatchers.IO) { app.store.setProjectStorageRule(selectedProject.id,rule) };app.changed() }
