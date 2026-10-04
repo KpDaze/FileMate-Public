@@ -70,6 +70,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     var review by remember { mutableStateOf<List<String>?>(null) }
     var target by remember { mutableStateOf<Long?>(null) }
     var targetChosen by remember { mutableStateOf(false) }
+    var moveItem by remember { mutableStateOf<IndexedMedia?>(null) }
+    var moveProjectId by remember { mutableStateOf<Long?>(null) }
+    var moveTidy by remember { mutableStateOf(false) }
+    var movePlan by remember { mutableStateOf<GalleryMovePlan?>(null) }
+    var moving by remember { mutableStateOf(false) }
     fun clearSelection() { selecting = false;selection = emptySet() }
     fun openReview(ids: List<String>) { review = ids;target = null;targetChosen = false;selected = null }
     BackHandler(selecting && review == null) { clearSelection() }
