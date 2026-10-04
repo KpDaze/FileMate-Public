@@ -26,6 +26,8 @@ fun ProviderScreen(app: FileMateApp, folder: GrantedStorageFolder, modifier: Mod
     var loadError by remember { mutableStateOf<String?>(null) }
     var newFolder by remember { mutableStateOf(false) }
     var folderName by remember { mutableStateOf("") }
+    var selectedEntry by remember { mutableStateOf<ProviderEntry?>(null) }
+    var renameText by remember { mutableStateOf("") }
     val entries by produceState(emptyList<ProviderEntry>(),tree,query,refresh) {
         val result=withContext(Dispatchers.IO) { runCatching { ProviderBrowser(app).search(tree,query) } }
         result.onSuccess { loadError=null;value=it }.onFailure { loadError=it.message ?: "This storage folder is unavailable." }
@@ -42,10 +44,30 @@ fun ProviderScreen(app: FileMateApp, folder: GrantedStorageFolder, modifier: Mod
         }
         LazyColumn(Modifier.weight(1f)) {
             items(entries,key={it.uri}) { item ->
-                ListItem(headlineContent={Text(item.name)},supportingContent={Text(if(item.directory) "Folder" else formatBytes(item.size))})
+                ListItem(headlineContent={Text(item.name)},supportingContent={Text(if(item.directory) "Folder" else formatBytes(item.size))},modifier=Modifier.fillMaxWidth(),trailingContent={ TextButton(onClick={selectedEntry=item;renameText=item.name}) { Text("Manage") } })
                 HorizontalDivider()
             }
         }
+    }
+    selectedEntry?.let { item ->
+        AlertDialog(onDismissRequest={selectedEntry=null},title={Text("Manage ${item.name}")},
+            text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(renameText,{renameText=it},label={Text("Name")},singleLine=true)
+                Text("Delete is immediate at the selected storage provider and may not have FileMate Undo. Use it only when you mean to remove this provider item.",fontSize=12.sp)
+            }},
+            confirmButton={Button(enabled=renameText.isNotBlank() && renameText!=item.name,onClick={
+                val uri=Uri.parse(item.uri);val name=renameText;scope.launch { runCatching { withContext(Dispatchers.IO) { ProviderBrowser(app).rename(uri,name) } }
+                    .onSuccess { app.store.history("External item renamed","${item.name} → $name");selectedEntry=null;refresh++;app.changed() }
+                    .onFailure { error=it.message ?: "Item could not be renamed." } }
+            }) {Text("Rename")}},
+            dismissButton={Row {
+                TextButton(onClick={selectedEntry=null}) {Text("Cancel")}
+                TextButton(onClick={
+                    val uri=Uri.parse(item.uri);scope.launch { runCatching { withContext(Dispatchers.IO) { ProviderBrowser(app).delete(uri) } }
+                        .onSuccess { app.store.history("External item deleted",item.name);selectedEntry=null;refresh++;app.changed() }
+                        .onFailure { error=it.message ?: "Item could not be deleted." } }
+                }) {Text("Delete")}
+            }})
     }
     if(newFolder) AlertDialog(onDismissRequest={newFolder=false},title={Text("Create folder")},
         text={OutlinedTextField(folderName,{folderName=it},label={Text("Folder name")},singleLine=true)},
