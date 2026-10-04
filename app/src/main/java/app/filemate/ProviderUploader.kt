@@ -25,10 +25,12 @@ class ProviderUploader(private val context: Context, private val store: Store) {
             if(plan.removeLocalAfterVerifiedCopy) {
                 // This option is intentionally conservative: only remove the exact local file that was
                 // fingerprinted before and after the verified provider copy.
-                val fingerprint=ContentFingerprint.read(source) ?: return "Copy verified, but the local file changed afterward. It was kept."
-                check(fingerprint.size==result.bytes && fingerprint.hash==result.hash) { "Copy verified, but the local file changed afterward. It was kept." }
+                val fingerprint=ContentFingerprint.read(source)
+                    ?: return "Copy verified, but the local file changed afterward. It was kept."
+                if(fingerprint.size!=result.bytes || fingerprint.hash!=result.hash)
+                    return "Copy verified, but the local file changed afterward. It was kept."
                 val path=source.absolutePath
-                check(source.delete()) { "Copy verified, but Android could not remove the local file. It was kept." }
+                if(!source.delete()) return "Copy verified, but Android could not remove the local file. It was kept."
                 store.markLocalRemovedAfterProviderCopy(path,source.name)
             }
             null
