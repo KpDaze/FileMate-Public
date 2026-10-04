@@ -97,6 +97,12 @@ class RulesTest {
         assertEquals(NamingPreference.TIDY_WHEN_REVIEWED,NamingSettings.parse("TIDY_WHEN_REVIEWED"))
     }
 
+    @Test fun mimeGuessStaysLocalAndPredictable() {
+        assertEquals("application/pdf",MimeGuess.fromName("report.PDF"))
+        assertEquals("image/png",MimeGuess.fromName("shot.png"))
+        assertEquals("application/octet-stream",MimeGuess.fromName("unknown.xyz"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
