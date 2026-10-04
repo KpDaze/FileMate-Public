@@ -22,7 +22,7 @@ class ProviderUploader(private val context: Context, private val store: Store) {
         return try {
             val result=VerifiedProviderCopy(context).copy(source,tree,plan.mime,plan.displayName)
             store.recordProviderUpload(source,result.uri,folder.name,plan.projectId)
-            if(plan.removeLocalAfterVerifiedCopy) {
+            if(plan.removeLocalAfterVerifiedCopy && DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = true)) {
                 // This option is intentionally conservative: only remove the exact local file that was
                 // fingerprinted before and after the verified provider copy.
                 val fingerprint=ContentFingerprint.read(source)
