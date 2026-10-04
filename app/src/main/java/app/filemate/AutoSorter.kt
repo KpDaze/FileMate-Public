@@ -19,9 +19,11 @@ class AutoSorter(private val store: Store) {
         val source = runCatching { file.canonicalFile }.getOrNull() ?: return null
         if(!source.path.startsWith("${sharedRoot.path}/")) return null
 
+        val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).canonicalFile
+        val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).canonicalFile
         val root = when {
-            source.path.startsWith(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).canonicalPath + "/") -> "Downloads"
-            source.path.startsWith(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).canonicalPath + "/") -> "Documents"
+            source.path == downloads.path || source.path.startsWith("${downloads.path}/") -> "Downloads"
+            source.path == documents.path || source.path.startsWith("${documents.path}/") -> "Documents"
             else -> return null
         }
         val fingerprint = ContentFingerprint.read(source) ?: return null
