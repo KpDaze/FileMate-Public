@@ -15,7 +15,7 @@ data class HistoryItem(val title: String, val detail: String, val time: Long)
 data class Project(val id: Long, val name: String, val created: Long, val updated: Long,
     val fileCount: Int)
 
-class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 6) {
+class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpenHelper(context, databaseName, null, 8) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -32,6 +32,8 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
         createFileActionTable(db)
         createGalleryTables(db)
         createGalleryOrganisationTables(db)
+        createProjectLearningTable(db)
+        createDriveRuleTable(db)
     }
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
         db.beginTransaction()
@@ -46,6 +48,8 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             if(old < 4) createFileActionTable(db)
             if(old < 5) createGalleryTables(db)
             if(old < 6) createGalleryOrganisationTables(db)
+            if(old < 7) createProjectLearningTable(db)
+            if(old < 8) createDriveRuleTable(db)
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -190,7 +194,10 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             require(changed > 0) { "The selected files are no longer available" }
             val now = System.currentTimeMillis()
             db.update("projects",ContentValues().apply { put("updated",now) },"id=?",arrayOf(projectId.toString()))
-            distinctPaths.forEach { db.execSQL("UPDATE cleanup_entries SET flags=flags & ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD.inv(),it)) }
+            distinctPaths.forEach { path ->
+                db.execSQL("UPDATE cleanup_entries SET flags=flags & ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD.inv(),path))
+                learnProjectTokens(db,path,projectId)
+            }
             refreshCleanupCounts(db)
             insertHistory(db,"Assigned to $projectName",if(changed == 1) "1 file" else "$changed files",now)
             db.setTransactionSuccessful()
@@ -216,12 +223,54 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
+    @Synchronized fun projectStorageRule(projectId: Long): StorageRule = readableDatabase.rawQuery(
+        "SELECT rule FROM project_storage_rules WHERE project_id=?",arrayOf(projectId.toString())
+    ).use { if(it.moveToFirst()) DriveRules.parse(it.getString(0)) else StorageRule.PHONE_ONLY }
+
+    @Synchronized fun setProjectStorageRule(projectId: Long, rule: StorageRule) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            require(db.rawQuery("SELECT 1 FROM projects WHERE id=?",arrayOf(projectId.toString())).use { it.moveToFirst() }) { "Project no longer exists" }
+            db.insertWithOnConflict("project_storage_rules",null,ContentValues().apply {
+                put("project_id",projectId);put("rule",rule.name)
+            },SQLiteDatabase.CONFLICT_REPLACE)
+            insertHistory(db,"Project storage rule changed","Future files for this project: ${rule.label}. Existing files were not moved.",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    @Synchronized fun markLocalRemovedAfterProviderCopy(path: String, name: String) {
+        val db=writableDatabase;db.beginTransaction()
+        try {
+            db.delete("files","path=?",arrayOf(path))
+            db.delete("cleanup_entries","path=?",arrayOf(path))
+            db.execSQL("UPDATE media SET available=0 WHERE current_path=?",arrayOf(path))
+            insertHistory(db,"Local copy removed after verified external copy","$name. External copy was verified first.",System.currentTimeMillis())
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
     @Synchronized fun assignedPaths(): Set<String> = readableDatabase.rawQuery("SELECT path FROM files WHERE project_id IS NOT NULL",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
     @Synchronized fun knownAiPaths(): Set<String> = readableDatabase.rawQuery("SELECT DISTINCT path FROM observations",null).use { c -> buildSet {
         while(c.moveToNext()) add(c.getString(0))
     } }
+    @Synchronized fun externalStorageFolder(): GrantedStorageFolder? {
+        val uri=state("external_storage_tree")?.takeIf { it.isNotBlank() } ?: return null
+        val name=state("external_storage_name") ?: "Selected storage"
+        return GrantedStorageFolder(uri,name)
+    }
+    @Synchronized fun externalStorageFolder(folder: GrantedStorageFolder) {
+        state("external_storage_tree",folder.uri);state("external_storage_name",folder.name)
+        history("External storage folder connected","${folder.name}. Access is through Android's folder picker; FileMate has no cloud API key.")
+    }
+    @Synchronized fun clearExternalStorageFolder() {
+        state("external_storage_tree","");state("external_storage_name","")
+        history("External storage folder disconnected","FileMate will not use the previously selected provider folder.")
+    }
+
     @Synchronized fun selectedFolders(): List<SelectedFolder> = readableDatabase.rawQuery("SELECT uri,name FROM selected_folders ORDER BY added,name",null).use { c -> buildList {
         while(c.moveToNext()) add(SelectedFolder(c.getString(0),c.getString(1)))
     } }
@@ -366,12 +415,16 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
                 put("source",finding.source);put("confidence",finding.confidence);put("reason",finding.reason);put("via",via)
             })
             if(!baseline && !finding.candidate) {
-                val count = (state("ignored")?.toLongOrNull() ?: 0) + 1
-                state("ignored",count.toString())
+                val count = db.rawQuery("SELECT value FROM state WHERE key='ignored'",null).use { if(it.moveToFirst()) it.getString(0).toLongOrNull() ?: 0 else 0 } + 1
+                db.insertWithOnConflict("state",null,ContentValues().apply { put("key","ignored");put("value",count.toString()) },SQLiteDatabase.CONFLICT_REPLACE)
             }
             db.setTransactionSuccessful()
             return !baseline && finding.candidate
         } finally { db.endTransaction() }
+    }
+
+    internal fun addHistory(db: SQLiteDatabase, title: String, detail: String, time: Long = System.currentTimeMillis()) {
+        insertHistory(db,title,detail,time)
     }
 
     private fun detectedFile(c: android.database.Cursor) = DetectedFile(
@@ -386,6 +439,54 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
             put("title",title);put("detail",detail);put("time",time)
         })
     }
+    @Synchronized fun learnProjectAssignment(fileName: String, projectId: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            learningTokens(fileName).forEach { token ->
+                db.execSQL("""INSERT INTO project_learning(token,project_id,hits) VALUES(?,?,1)
+                    ON CONFLICT(token,project_id) DO UPDATE SET hits=hits+1""",arrayOf(token,projectId))
+            }
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
+    }
+
+    @Synchronized fun learnedProject(fileName: String): ProjectMatch? {
+        val tokens = learningTokens(fileName)
+        if(tokens.isEmpty()) return null
+        val marks = tokens.joinToString(",") { "?" }
+        val scores = readableDatabase.rawQuery("""
+            SELECT l.project_id,p.name,SUM(l.hits) AS score,COUNT(DISTINCT l.token) AS matched
+            FROM project_learning l JOIN projects p ON p.id=l.project_id
+            WHERE l.token IN ($marks)
+            GROUP BY l.project_id,p.name
+            ORDER BY score DESC,matched DESC,p.name COLLATE NOCASE
+        """.trimIndent(),tokens.toTypedArray()).use { c -> buildList {
+            while(c.moveToNext()) add(ProjectMatch(c.getLong(0),c.getString(1),"Medium","Learned from earlier manual assignments.") to (c.getInt(2) to c.getInt(3)))
+        } }
+        val best = scores.firstOrNull() ?: return null
+        val runner = scores.getOrNull(1)
+        if(best.second.second < 2 || best.second.first < 2) return null
+        if(runner != null && runner.second == best.second) return null
+        return best.first
+    }
+
+    private fun createDriveRuleTable(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS project_storage_rules(project_id INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,rule TEXT NOT NULL DEFAULT 'PHONE_ONLY')")
+    }
+
+    private fun createProjectLearningTable(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS project_learning(token TEXT NOT NULL,project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,hits INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(token,project_id))")
+        db.execSQL("CREATE INDEX IF NOT EXISTS project_learning_project ON project_learning(project_id)")
+    }
+    private fun learningTokens(name: String): List<String> = ProjectLearning.tokens(name)
+    private fun learnProjectTokens(db: SQLiteDatabase, path: String, projectId: Long) {
+        learningTokens(File(path).name).forEach { token ->
+            db.execSQL("""INSERT INTO project_learning(token,project_id,hits) VALUES(?,?,1)
+                ON CONFLICT(token,project_id) DO UPDATE SET hits=hits+1""",arrayOf(token,projectId))
+        }
+    }
+
     private fun createCleanupTables(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE cleanup_scans(id INTEGER PRIMARY KEY AUTOINCREMENT,completed INTEGER NOT NULL,total_files INTEGER NOT NULL,total_bytes INTEGER NOT NULL,likely_ai INTEGER NOT NULL,unsorted_downloads INTEGER NOT NULL,large_files INTEGER NOT NULL,old_files INTEGER NOT NULL,archives INTEGER NOT NULL,duplicate_groups INTEGER NOT NULL,duplicate_files INTEGER NOT NULL,reclaimable_bytes INTEGER NOT NULL)")
         db.execSQL("CREATE TABLE cleanup_entries(path TEXT PRIMARY KEY,name TEXT NOT NULL,size INTEGER NOT NULL,modified INTEGER NOT NULL,root TEXT NOT NULL,flags INTEGER NOT NULL,hash TEXT,scan_id INTEGER NOT NULL REFERENCES cleanup_scans(id) ON DELETE CASCADE)")

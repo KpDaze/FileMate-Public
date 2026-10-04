@@ -43,6 +43,75 @@ class RulesTest {
         assertTrue(FileRules.changed(stamp,FileStamp(11,123)))
         assertTrue(FileRules.changed(stamp,FileStamp(10,124)))
     }
+    @Test fun projectMatchingRequiresOneUnambiguousFullProjectName() {
+        val projects = listOf(
+            Project(1,"Killerfect Security",0,0,0),
+            Project(2,"House",0,0,0)
+        )
+        val match = ProjectRules.classify("ChatGPT_Killerfect-Security_quote.pdf",projects)
+        assertNotNull(match);assertEquals(1,match!!.projectId);assertEquals("High",match.confidence)
+        assertNull(ProjectRules.classify("ChatGPT_notes.pdf",projects))
+    }
+    @Test fun overlappingProjectNamesDoNotAutoChoose() {
+        val projects = listOf(
+            Project(1,"House",0,0,0),
+            Project(2,"House Renovation",0,0,0)
+        )
+        assertNull(ProjectRules.classify("House_Renovation_plan.pdf",projects))
+    }
+
+    @Test fun projectMatchingDoesNotGuessFromPartialOrGenericNames() {
+        val projects = listOf(
+            Project(1,"Life Map",0,0,0),
+            Project(2,"FileMate",0,0,0)
+        )
+        assertNull(ProjectRules.classify("ChatGPT_map_notes.pdf",projects))
+        assertNull(ProjectRules.classify("Qwen_export.pdf",projects))
+        assertEquals(1L,ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)?.projectId)
+    }
+
+    @Test fun autoSortRequiresBothHighSourceAndUnambiguousProjectEvidence() {
+        val projects = listOf(Project(1,"Life Map",0,0,0))
+        val project = ProjectRules.classify("ChatGPT_Life_Map_notes.pdf",projects)
+        assertEquals("High",project?.confidence)
+        assertEquals("High",FileRules.classify("ChatGPT_Life_Map_notes.pdf",AiContext("ChatGPT","x",now-1000),now).confidence)
+        assertEquals("Medium",FileRules.classify("ChatGPT_Life_Map_notes.pdf",qwen,now).confidence)
+        assertNull(ProjectRules.classify("ChatGPT_notes.pdf",projects))
+    }
+
+    @Test fun projectLearningIgnoresProviderAndGenericNoise() {
+        assertEquals(listOf("killerfect","security","quote"),ProjectLearning.tokens("ChatGPT_Killerfect-Security_quote.pdf"))
+        assertEquals(emptyList<String>(),ProjectLearning.tokens("Qwen_export_20261004.pdf"))
+    }
+
+    @Test fun driveAfterUploadNeverRemovesLocalBeforeVerifiedSuccess() {
+        assertFalse(DriveRules.mayRemoveLocal(uploadVerified = false,driveAfterUpload = true))
+        assertFalse(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = false))
+        assertTrue(DriveRules.mayRemoveLocal(uploadVerified = true,driveAfterUpload = true))
+        assertEquals(StorageRule.DRIVE_AFTER_UPLOAD,DriveRules.parse("DRIVE_AFTER_UPLOAD"))
+        assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse(null))
+        assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse("nonsense"))
+    }
+
+    @Test fun monitoringTimeoutIsBoundedAndDefaultsSafely() {
+        assertEquals(30L,MonitoringSettings.minutes(null))
+        assertEquals(30L,MonitoringSettings.minutes("999"))
+        assertEquals(15L,MonitoringSettings.minutes("15"))
+        assertEquals(60L,MonitoringSettings.minutes("60"))
+    }
+
+    @Test fun namingPreferenceDefaultsToPreservingNames() {
+        assertEquals(NamingPreference.KEEP_CURRENT,NamingSettings.parse(null))
+        assertEquals(NamingPreference.KEEP_CURRENT,NamingSettings.parse("broken"))
+        assertEquals(NamingPreference.TIDY_WHEN_REVIEWED,NamingSettings.parse("TIDY_WHEN_REVIEWED"))
+    }
+
+    @Test fun mimeGuessStaysLocalAndPredictable() {
+        assertEquals("application/pdf",MimeGuess.fromName("report.PDF"))
+        assertEquals("image/png",MimeGuess.fromName("shot.png"))
+        assertEquals("application/octet-stream",MimeGuess.fromName("unknown.xyz"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }

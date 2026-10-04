@@ -59,3 +59,33 @@ No Stage 3 signed phone package has been delivered. When Kel chooses the later s
 
 ## Stage 3B acceptance, when a later phone update is requested
 Stage 3B has passing build/JVM/lint/browser and Android fixture evidence. Stage 3B native fixture verification passed in separately approved run 36640809269 on Android 15/API 35: media/access probes, screenshot groups, duplicate-row suppression, cancellation and destination reset, confirmed assignment, intake removal, Refresh persistence, All Gallery retention, confirmed clear and unchanged six original paths/hashes. Three Stage 3B runs were separately approved; the first two exposed test-script issues, and the third passed. Physical-phone acceptance remains pending. With disposable screenshots on two dates/in two folders plus a camera photo, enter Projects → Needs Sorting. Check date/folder groups and camera exclusion; open a group; manually select screenshots; choose a project and Cancel (unchanged), then Confirm (removed from intake, retained in All Gallery/project). Refresh, clear an assignment and delete the temporary project to check intake restoration. Revoke/reselect photo access and check unavailable entries are hidden while assignments survive. Current installed Stage 2 cannot perform this test. Do not package an APK or start an emulator automatically; each emulator run requires Kel’s explicit approval.
+
+
+## Recovery build acceptance
+
+The recovery source is version 0.4.0-recovery, version code 6. It restores the missing live automatic organiser while preserving the existing move journal and Undo.
+
+Use disposable files only for first acceptance:
+1. Create a temporary FileMate project with a distinctive two-word name.
+2. During a Hub-started live AI session, download a disposable file whose filename clearly contains both the active AI provider name and the full project name. Expected: FileMate may organise it automatically into Documents/FileMate/<project> and records the move in Activity with Undo.
+3. Download a generic disposable filename during the same session. Expected: timing alone does not move it; uncertain evidence stays for review.
+4. Download a file naming a different AI provider than the active one. Expected: no High-confidence automatic move.
+5. Use Activity → Undo on the automatic move. Expected: the exact fingerprinted file returns to its original location without overwriting another file.
+6. Manually assign several disposable similarly named files to a project. A later uncertain matching filename may show a learned project suggestion, but the learned suggestion alone must not move it.
+7. Change a project's Future file storage between Phone only and Phone + Drive. Existing files must not move. Until Google OAuth is genuinely configured, no upload or local removal should occur.
+
+Do not use personal camera photos or important work files for first acceptance. Automatic camera organisation remains out of scope.
+
+
+## Optional Android storage-provider check
+
+This route uses Android's system folder picker, not a FileMate developer cloud API.
+1. Setup → Optional storage folder → Choose folder.
+2. If Google Drive is offered by Android, choose a disposable test folder there. Otherwise choose another disposable provider/local folder.
+3. Browse the selected folder in FileMate and create a disposable subfolder.
+4. Set a temporary project's storage rule to Phone + selected storage.
+5. Copy one disposable project file. Confirm the local file remains.
+6. For the selected-storage-after-verified-copy rule, use a disposable file only. FileMate must read the provider copy back and verify its SHA-256 before removing the local copy; any verification/read failure must keep the local file.
+7. Disconnect the provider folder. Core local FileMate must continue normally.
+
+No Google Cloud project, OAuth client, developer Drive API, API key or network permission is part of this route.

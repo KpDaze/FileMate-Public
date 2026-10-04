@@ -26,7 +26,7 @@ class AiActivity(private val context: Context, private val selected: () -> List<
     private var since = System.currentTimeMillis() - 1000
     private var foreground: String? = null
     private var last: AiContext? = null
-    private val clock = SessionClock()
+    private val clock = SessionClock(MonitoringSettings.minutes((context.applicationContext as FileMateApp).store.state("monitor_timeout_minutes")) * 60_000L)
     init { clock.touch(SystemClock.elapsedRealtime()) }
     @Synchronized fun hubLaunch(packageName: String, label: String) {
         clock.touch(SystemClock.elapsedRealtime())
@@ -104,7 +104,7 @@ class MonitorService : Service() {
                         // Close the gap between initial indexing and watcher installation.
                         app.reconcile()
                         app.store.state("session_active","true")
-                        app.store.history("Monitoring started", "Download events are being watched. Your files remain unchanged.")
+                        app.store.history("Monitoring started", "Download events are being watched. High-confidence AI downloads may be organised automatically; uncertain files stay untouched.")
                     }
                     activity.hubLaunch(pkg,label)
                     if(ticker == null) ticker = scope.launch {
@@ -113,7 +113,7 @@ class MonitorService : Service() {
                             if(!Environment.isExternalStorageManager()) { fail("File access was removed. Restore it in Setup.");break }
                             activity.refresh()
                             if(activity.expired()) {
-                                finishSession("Monitoring ended automatically", "No selected AI activity for 30 minutes. Reopening FileMate checks for missed files.");break
+                                finishSession("Monitoring ended automatically", "No selected AI activity for ${MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes"))} minutes. Reopening FileMate checks for missed files.");break
                             }
                             app.monitor.value = app.monitor.value.copy(usageAvailable = Access.usage(this@MonitorService))
                         }
@@ -132,7 +132,7 @@ class MonitorService : Service() {
         val stop = PendingIntent.getService(this,2,Intent(this,MonitorService::class.java).setAction(STOP),PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_monitor)
             .setContentTitle("FileMate is watching for AI downloads")
-            .setContentText("Stops automatically after 30 minutes of AI inactivity")
+            .setContentText("Stops automatically after ${MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes"))} minutes of AI inactivity")
             .setContentIntent(open).addAction(0,"Stop monitoring",stop)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).build()
     }
@@ -186,6 +186,13 @@ class MonitorService : Service() {
     }
     @Synchronized private fun schedule(file: File) {
         if(closing || FileRules.temporary(file.name)) return
+        // FileMate's own organised destination is inside Documents and is watched for catch-up.
+        // Never feed those files back through live AI classification/automatic organisation.
+        @Suppress("DEPRECATION")
+        val managedRoot = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),"FileMate")
+        val canonical = runCatching { file.canonicalPath }.getOrNull()
+        val managedPath = runCatching { managedRoot.canonicalPath }.getOrNull()
+        if(canonical != null && managedPath != null && (canonical == managedPath || canonical.startsWith("$managedPath/"))) return
         val path = file.absolutePath
         pending.remove(path)?.cancel()
         pending[path] = scope.launch {
@@ -201,7 +208,16 @@ class MonitorService : Service() {
                 if(stable >= 2) {
                     val now = System.currentTimeMillis()
                     val finding = FileRules.classify(file.name,activity.refresh(),now)
-                    app.store.observe(file,finding,"Live monitoring")
+                    val observed = app.store.observe(file,finding,"Live monitoring")
+                    if(observed) {
+                        val result = AutoSorter(app.store).trySort(file,finding)
+                        when {
+                            result == null -> Unit
+                            result.applied > 0 -> app.store.history("Automatically organised","${file.name}. High-confidence source and project evidence agreed.")
+                            result.failed > 0 || result.skipped > 0 -> app.store.history("Automatic organisation left for review",
+                                result.messages.take(3).joinToString(" ").ifBlank { file.name })
+                        }
+                    }
                     app.changed()
                     return@launch
                 }

@@ -26,7 +26,7 @@ The monitoring catch-up path still does not identify a same-path rewrite that pr
 
 Filename clues plus nearby selected AI use can raise source confidence. Filename alone is medium confidence. Timing alone is low confidence, never proof of source. Unrecognised files, installers and obvious receipt/bank/statement filenames are excluded from AI Recent. Catch-up cannot reconstruct past app activity and does not pretend to do so. Unknown generic filenames may therefore remain excluded until the deliberate cleanup scan.
 
-The source classifier is deliberately preliminary: time correlation can produce false suggestions. Projects are never invented. Stage 2 keeps source confidence separate from project confidence. Manual assignment confirms the project only in local metadata; it does not change the file. Cleanup moves and optional tidy names require a separate preview and Apply action.
+The source classifier is deliberately conservative: time correlation can produce false suggestions. Projects are never invented. Source confidence remains separate from project confidence. Live monitoring may automatically organise a file only when source evidence is High and the filename uniquely names one existing user-created project; it reuses the fingerprint-verified move journal and Undo. Anything ambiguous stays physically untouched in Needs Sorting. Manual file and Gallery assignments teach local filename clues for future Medium-confidence suggestions; learned clues never trigger an automatic move by themselves. Cleanup moves and optional tidy names remain preview-and-Apply actions.
 
 ## Read-only Gallery (Stage 3A)
 
@@ -42,7 +42,7 @@ Project is the main organisation unit across AI sources, screenshots, documents 
 
 The completed Gallery stages will add favourites/albums, reviewed recoverable media actions and duplicate/version review to Stage 3A browsing. Camera photos are not automatically changed without a deliberate rule or cleanup action. On-device OCR and exact hashes help screenshots; similar images are suggested groups, not proof that any image is disposable. Distinguish duplicates from changed versions.
 
-Approved Drive direction: global Phone only default; simple per-project Phone + Drive override. Drive after upload is deliberate and removes local data only after upload success is verified. Rule changes apply to future files; existing files require a separate review. Google Drive remains optional. Core functionality must continue without it. No hosted/paid dependencies may be introduced without explicit approval.
+Approved optional external-storage direction: global Phone only default; simple per-project Phone + selected-storage override, with an explicit selected-storage-after-verified-copy option. Under the recovered no-metered-cost rule, FileMate uses Android user-granted document-provider folders rather than a developer Drive API/OAuth client. If the installed Google Drive app exposes a folder through Android’s picker, it can be selected there. Local removal is allowed only after a byte-for-byte verified provider copy. Rule changes never retroactively move existing files. Core functionality remains local and independent of any provider.
 
 ### Gallery sorting view — 29 September 2026
 

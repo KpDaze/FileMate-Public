@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -70,6 +71,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
     var review by remember { mutableStateOf<List<String>?>(null) }
     var target by remember { mutableStateOf<Long?>(null) }
     var targetChosen by remember { mutableStateOf(false) }
+    var moveItem by remember { mutableStateOf<IndexedMedia?>(null) }
+    var moveProjectId by remember { mutableStateOf<Long?>(null) }
+    var moveTidy by remember { mutableStateOf(false) }
+    var movePlan by remember { mutableStateOf<GalleryMovePlan?>(null) }
+    var moving by remember { mutableStateOf(false) }
     fun clearSelection() { selecting = false;selection = emptySet() }
     fun openReview(ids: List<String>) { review = ids;target = null;targetChosen = false;selected = null }
     BackHandler(selecting && review == null) { clearSelection() }
@@ -108,6 +114,18 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
         val byId = filtered.associateBy { it.identity }
         groups.map { it to it.identities.mapNotNull(byId::get) }.filter { it.second.isNotEmpty() }
     } else listOf(null to filtered)
+    val groupSuggestions by produceState<Map<String,ProjectMatch>>(emptyMap(),groups,revision) {
+        value = withContext(Dispatchers.IO) {
+            val byId = visible.associateBy { it.identity }
+            groups.mapNotNull { group ->
+                val suggestions = group.identities.mapNotNull { id -> byId[id]?.let { app.store.learnedProject(it.name) } }
+                val counts = suggestions.groupingBy { it.projectId }.eachCount()
+                val best = counts.maxByOrNull { it.value }
+                val unique = best?.takeIf { top -> top.value >= 2 && counts.count { it.value == top.value } == 1 }
+                unique?.let { top -> group.key to suggestions.first { it.projectId == top.key } }
+            }.toMap()
+        }
+    }
     val detail = visible.firstOrNull { it.identity == selected }
     LazyVerticalGrid(columns = GridCells.Fixed(3),modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp,12.dp,20.dp,24.dp),horizontalArrangement = Arrangement.spacedBy(8.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -159,7 +177,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id;clearSelection() },label = { Text(p.name) }) }
                 }
                 if(filter == "Screenshots" || filter == "Needs Sorting") {
-                    Text("Grouped by date and folder clues, not by topic or project. Camera folder items are excluded.",fontSize = 12.sp)
+                    Text("Grouped by date and folder clues. FileMate may show a learned project suggestion from earlier assignments, but grouping itself does not prove a topic or project. Camera folder items are excluded.",fontSize = 12.sp)
                     if(filter == "Needs Sorting") Text("Only accessible, unassigned screenshots appear here. Choose items, then confirm their project.",fontSize = 12.sp)
                     if(groupFilter != null) TextButton(onClick = { groupFilter = null;clearSelection();assignmentMessage = null }) { Text("Show all screenshot groups") }
                 }
@@ -197,7 +215,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
         }
         displayGroups.forEach { (group,media) ->
             if(group != null) item(key = "group:${group.key}",span = { GridItemSpan(maxLineSpan) }) {
-                Column { Text(group.day,fontWeight = FontWeight.SemiBold);Text("${group.folder} · ${media.size} items",fontSize = 12.sp) }
+                Column {
+                    Text(group.day,fontWeight = FontWeight.SemiBold)
+                    Text("${group.folder} · ${media.size} items",fontSize = 12.sp)
+                    groupSuggestions[group.key]?.let { Text("Likely ${it.projectName} from earlier assignments · review before applying",fontSize = 11.sp,color = MaterialTheme.colorScheme.primary) }
+                }
             }
             items(media,key = { it.identity }) { item ->
                 OutlinedCard(onClick = { if(selecting) selection = if(item.identity in selection) selection - item.identity else selection + item.identity else selected = item.identity },modifier = Modifier.fillMaxWidth()) {
@@ -232,8 +254,44 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     scope.launch { withContext(Dispatchers.IO) { app.store.setMediaFavourite(listOf(id),makeFavourite) };app.changed() }
                 }) { Text(if(detail.identity in favourites) "Remove from Favourites" else "Add to Favourites") } }
                 item { TextButton(onClick = { albumPicker=listOf(detail.identity) }) { Text("Add to album") } }
+                item { TextButton(onClick = { moveItem=detail;moveProjectId=detail.projectId;moveTidy=false;movePlan=null;selected=null }) { Text("Move / rename file…") } }
             }
         },confirmButton = { TextButton(enabled = !assigning,onClick = { selected = null }) { Text("Done") } })
+    moveItem?.let { item ->
+        val chosenProject=projects.firstOrNull { it.id == moveProjectId }
+        AlertDialog(onDismissRequest={ if(!moving) { moveItem=null;movePlan=null } },
+            title={ Text(if(movePlan==null) "Move / rename file" else "Review file change") },
+            text={ Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(item.name,fontWeight=FontWeight.SemiBold)
+                if(item.clues.camera) Text("Camera media: this changes only because you deliberately opened and confirm this action.",fontSize=12.sp,color=MaterialTheme.colorScheme.error)
+                if(movePlan==null) {
+                    Text("Choose a project. Nothing changes until you review the destination and confirm.",fontSize=13.sp)
+                    Column(Modifier.heightIn(max=220.dp).verticalScroll(rememberScrollState())) {
+                        projects.forEach { p -> TextButton(onClick={moveProjectId=p.id}) { RadioButton(selected=moveProjectId==p.id,onClick=null);Text(p.name) } }
+                    }
+                    Row(verticalAlignment=Alignment.CenterVertically) { Checkbox(moveTidy,{moveTidy=it});Text("Use tidy filename") }
+                } else {
+                    Text("From\n${movePlan!!.sourcePath}\n\nTo\n${movePlan!!.targetPath}",fontSize=12.sp)
+                    Text(if(movePlan!!.supported) "Contents are verified before and after the move. Existing files are never overwritten." else movePlan!!.note,fontSize=12.sp)
+                }
+            } },
+            dismissButton={ TextButton(enabled=!moving,onClick={ if(movePlan!=null) movePlan=null else moveItem=null }) { Text(if(movePlan!=null) "Back" else "Cancel") } },
+            confirmButton={
+                if(movePlan==null) Button(enabled=chosenProject!=null && !moving,onClick={
+                    val p=chosenProject ?: return@Button
+                    scope.launch { movePlan=withContext(Dispatchers.IO) { GalleryFileOrganiser(app.store).plan(item,p,moveTidy) } }
+                }) { Text("Review") }
+                else Button(enabled=movePlan!!.supported && !moving,onClick={
+                    val p=chosenProject ?: return@Button;val plan=movePlan!!
+                    moving=true;scope.launch {
+                        val problem=withContext(Dispatchers.IO) { GalleryFileOrganiser(app.store).apply(plan,p.id) }
+                        moving=false
+                        if(problem==null) { moveItem=null;movePlan=null;assignmentMessage="File moved safely to ${p.name}.";app.refreshGallery();app.changed() }
+                        else error=problem
+                    }
+                }) { Text(if(moving) "Moving…" else "Confirm move") }
+            })
+    }
     review?.let { ids ->
         val reviewItems = visible.filter { it.identity in ids }
         val valid = reviewItems.size == ids.size && targetChosen && (target == null || projects.any { it.id == target })

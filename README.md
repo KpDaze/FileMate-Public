@@ -4,19 +4,15 @@ A personal, local-first Android AI file organiser and gallery for KpDaze. The ap
 
 ## Current status
 
-The corrected 0.1.1 Android proof passed its bounded Android 15 fixture checks and the real production 30-minute inactivity interval. [Public run 36285379397](https://github.com/KpDaze/FileMate-Public/actions/runs/36285379397) used a standard `ubuntu-latest` runner with KVM and API 35. It verified the build and JVM tests, an active monitoring session at the at-least-29-minute check, automatic stop, the Activity entry and removal of the monitoring notification. No shortened timeout or device-clock change was used.
+Native development has progressed beyond the historical Stage 3D checkpoint. The recovery build is version `0.4.0-recovery` (version code 6) on the recovery branch while `main` remains untouched.
 
-Kel installed the corrected APK on a physical phone on 27 September 2026. Installation and the screens tried appeared to work. The later broad-access setup was deliberately left incomplete, so real-provider downloads, ordinary app switching and the 30-minute stop are not yet accepted on that phone.
+The recovered core organiser now connects live AI download detection to conservative automatic project organisation. Automatic moves require High source confidence plus one unambiguous existing user-created project match, and reuse the existing fingerprint-verified move journal and Undo. Uncertain files remain physically untouched in Needs Sorting. Manual file and Gallery assignments also teach local filename clues for future review-only project suggestions.
 
-The Stage 2 organiser milestone shipped as `0.2.0-stage2d`. It adds manual projects, Needs Sorting, single and batch assignment, a deliberate phone cleanup scan, previewed move/rename actions, conflict-safe filenames, an action journal and Undo. [Build run 36291518444](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518444) passed the JVM tests, Android lint and debug assembly.
+Stage 3 Gallery functionality already present in native source includes screenshot intake, project assignment, exact/similar/version comparison, recoverable Android Trash/restore, Favourites and Albums.
 
-[Android proof run 36291518440](https://github.com/KpDaze/FileMate-Public/actions/runs/36291518440) passed on Android 15/API 35. Using disposable shared-storage fixtures, it verified exact duplicate detection, project assignment, a conflict-safe destination name, a real move, preservation of the pre-existing destination file and Undo back to the original path. Physical-phone acceptance of Stage 2 remains pending.
+The original optional Drive goal is being implemented without a developer Drive API because the recovered specification forbids assuming a free tier is acceptable. FileMate now uses Android user-granted document-provider folders instead: it can remember a selected provider folder, browse/search its top level, create folders and make verified copies. If the installed Google Drive app exposes a folder through Android’s picker, it can be selected there. Provider-only storage removes a local file only after the external copy is read back and hash-verified.
 
-The personal phone update is `FileMate-0.2.0-Stage2.apk`, version code 3, SHA-256 `79ca2ce8b2d80318191516279d55642dc54355c540e36db571345460ae3d4cee`. It is signed with the same backed-up personal certificate as the installed 0.1.1 copy, so Android can apply it as an update. [Final main build 36292283138](https://github.com/KpDaze/FileMate-Public/actions/runs/36292283138) passed after packaging was returned to manual-only mode.
-
-A later Stage 2 safeguard repair through `1c59694e88c1beb21a001358acbee8af63fdafe0` enforces exclusive destination creation and fingerprints every previewed move so Undo can refuse same-size edits. Interrupted copies remain for review; older hashless actions are not eligible for automatic Undo. See the [repair verification](docs/VERIFICATION.md). This source repair is not in the installed signed Stage 2 APK; no replacement signed phone APK has been delivered.
-
-Stages 3A–3C are now implemented in source as `0.3.0-stage3c`, version code 4. Phone → Gallery reads local image/video metadata through MediaStore, displays chronological thumbnails and Unassigned/All Gallery/Camera/Screenshots/Downloads/Projects filters, and supports confirmed individual and batch project assignment without changing media. Schema 5 adds a forward-only media migration. The [Gallery evidence](docs/VERIFICATION.md#stage-3a-read-only-gallery--28-september-2026-brisbane) distinguishes Android fixture checks from unperformed real-phone tests. No Stage 3 phone APK has been packaged or delivered.
+No emulator or GitHub Actions workflow is automatically launched by the recovery work.
 
 ## Native behaviour
 

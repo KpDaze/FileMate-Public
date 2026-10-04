@@ -17,6 +17,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -128,6 +130,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val fileActions by produceState(emptyList<FileActionRecord>(),revision) { value = withContext(Dispatchers.IO) { app.store.fileActions() } }
     val ignored by produceState("0",revision) { value = withContext(Dispatchers.IO) { app.store.state("ignored") ?: "0" } }
     val lastCheck by produceState<String?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.state("last_check") } }
+    val monitorTimeout by produceState(MonitoringSettings.DEFAULT_MINUTES,revision) {
+        value = withContext(Dispatchers.IO) { MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes")) }
+    }
+    val namingPreference by produceState(NamingPreference.KEEP_CURRENT,revision) {
+        value = withContext(Dispatchers.IO) { NamingSettings.parse(app.store.state("naming_preference")) }
+    }
+    val externalStorage by produceState<GrantedStorageFolder?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.externalStorageFolder() } }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
     val usageAllowed = remember(permissionTick) { Access.usage(activity) }
     val notificationsAllowed = remember(permissionTick) {
@@ -139,6 +148,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             activity.contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             app.addSelectedFolder(uri)
         } catch(_: Exception) { error = "Android didn't keep access to that folder. Choose it again and allow access." }
+    }
+    val storagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if(uri != null) try {
+            activity.contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val storage=GrantedStorage(activity)
+            app.scope.launch { app.store.externalStorageFolder(GrantedStorageFolder(uri.toString(),storage.name(uri)));app.changed() }
+        } catch(_: Exception) { error = "Android did not keep access to that storage folder. Nothing was uploaded or removed." }
     }
     LaunchedEffect(needsSorting) {
         val available = needsSorting.mapTo(mutableSetOf()) { it.path }
@@ -191,7 +207,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                 Image(painterResource(R.drawable.filemate_logo),contentDescription = null,Modifier.size(42.dp))
                 Spacer(Modifier.width(10.dp))
                 Text("FileMate",fontWeight = FontWeight.Bold,fontSize = 24.sp,modifier = Modifier.weight(1f))
-                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("STAGE 3C",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
+                Surface(color = Pale,shape = RoundedCornerShape(12.dp)) { Text("V1 RECOVERY",color = Blue,fontSize = 11.sp,fontWeight = FontWeight.SemiBold,modifier = Modifier.padding(10.dp,7.dp)) }
             }
         },
         bottomBar = {
@@ -208,6 +224,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         when(page) {
             "Add apps" -> AppPicker(app,hub,Modifier.padding(padding)) { page = "AI Hub" }
             "Gallery" -> GalleryScreen(app,resumed,galleryProjectId,Modifier.padding(padding),gallerySorting,galleryGroup) { page = if(gallerySorting) "Needs Sorting" else "Phone" }
+            "External storage" -> externalStorage?.let { ProviderScreen(app,it,Modifier.padding(padding)) { page="Setup" } } ?: run { LaunchedEffect(Unit) { page="Setup" } }
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding = PaddingValues(22.dp,12.dp,22.dp,24.dp),verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when(page) {
                     "AI Hub" -> {
@@ -256,10 +273,10 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 if(monitor.running) TextButton(onClick = { activity.startService(Intent(activity,MonitorService::class.java).setAction(MonitorService.STOP)) }) { Text("Stop monitoring") }
                             }
                         }
-                        item { Text(if(usageAllowed) "Stops after 30 minutes away from your selected AI apps." else "Without app activity access, sessions end 30 minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
+                        item { Text(if(usageAllowed) "Stops after $monitorTimeout minutes away from your selected AI apps." else "Without app activity access, sessions end $monitorTimeout minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
                         if(sortingCount > 0) item { ActionRow("Needs Sorting","$sortingCount items need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         if(recent.isNotEmpty()) item { ActionRow("Recent detections","${recent.size} likely AI files · review source clues",Icons.Outlined.InsertDriveFile) { page = "Recent" } }
-                        item { Text("Project names and assignments stay in FileMate's local database. Files remain in their original locations.",color = Muted,fontSize = 12.sp) }
+                        item { Text("High-confidence AI downloads can be organised automatically. Uncertain files stay untouched in Needs Sorting.",color = Muted,fontSize = 12.sp) }
                     }
                     "Projects" -> {
                         item { Title("Projects", "Keep files together by what you're working on.") }
@@ -302,25 +319,53 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
+                            val projectStorageRule = app.store.projectStorageRule(selectedProject.id)
+                            item {
+                                OutlinedCard(Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("Future file storage",fontWeight = FontWeight.SemiBold)
+                                        Text("Phone only is the default. Existing files never move when this rule changes.",fontSize = 12.sp,color = Muted)
+                                        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            StorageRule.entries.forEach { rule ->
+                                                FilterChip(selected = projectStorageRule == rule,onClick = {
+                                                    uiScope.launch { withContext(Dispatchers.IO) { app.store.setProjectStorageRule(selectedProject.id,rule) };app.changed() }
+                                                },label = { Text(rule.label) })
+                                            }
+                                        }
+                                        if(projectStorageRule != StorageRule.PHONE_ONLY) Text(if(externalStorage==null) "Choose a storage-provider folder in Setup before copying anything." else "Selected provider: ${externalStorage!!.name}. Existing files are never changed just because this rule changes.",fontSize = 12.sp,color = Muted)
+                                    }
+                                }
+                            }
                             if(projectMediaCount > 0) item { ActionRow("Project Gallery","$projectMediaCount indexed photos or videos · access may limit what is visible",Icons.Outlined.PhotoLibrary) { gallerySorting = false;galleryGroup = null;galleryProjectId = selectedProject.id;page = "Gallery" } }
                             if(projectFiles.isEmpty() && projectMediaCount == 0) item {
                                 InfoCard("No files assigned", "Assign files in Needs Sorting or photos and videos in Gallery.",Icons.Outlined.DriveFileMove) {}
                             }
                             items(projectFiles,key = { it.path }) { file ->
-                                FileRow(file) { detail = file }
+                                Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                                    FileRow(file) { detail = file }
+                                    if(projectStorageRule != StorageRule.PHONE_ONLY) {
+                                        TextButton(enabled=externalStorage!=null,onClick={
+                                            uiScope.launch {
+                                                val problem=withContext(Dispatchers.IO) { ProjectProviderUpload(activity,app.store).upload(file,projectStorageRule) }
+                                                app.changed()
+                                                if(problem!=null) error=problem
+                                            }
+                                        }) { Text(if(projectStorageRule==StorageRule.DRIVE_AFTER_UPLOAD) "Copy to storage, then remove verified local copy" else "Copy to storage") }
+                                    }
+                                }
                             }
                         }
                     }
                     "Needs Sorting" -> {
-                        item { Title("Needs Sorting", "Choose the project. FileMate won't guess.") }
-                        item { Text("Source confidence describes where a file may have come from. Project assignment stays separate and becomes confirmed only when you choose it.",fontSize = 13.sp,color = Muted) }
+                        item { Title("Needs Sorting", "Uncertain files wait here for you. High-confidence matches are handled automatically.") }
+                        item { Text("Source and project confidence are separate. FileMate only acts automatically when both are strong enough; otherwise the file stays here.",fontSize = 13.sp,color = Muted) }
                         if(projects.isEmpty()) item {
                             InfoCard("Create a project first", "You need somewhere to assign the selected files.",Icons.Outlined.CreateNewFolder) {
                                 TextButton(onClick = { editingProjectId = null;showProjectEditor = true }) { Text("Create project") }
                             }
                         }
                         item { Text("Screenshot groups",fontWeight = FontWeight.SemiBold) }
-                        item { Text("Unassigned screenshots grouped by date and folder clues. These groups do not predict a project. Camera folder items stay out.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Unassigned screenshots are grouped by date and folder clues. Learned project hints may appear for review, but FileMate does not auto-assign the group. Camera folder items stay out.",fontSize = 13.sp,color = Muted) }
                         if(galleryProgress.running) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                         if(screenshotIntake.isEmpty()) item { Text(if(galleryProgress.running) "Checking accessible screenshots…" else "No accessible unassigned screenshots. Open Gallery to choose photo access or refresh.",fontSize = 13.sp,color = Muted) }
                         items(screenshotIntake,key = { "screenshots:${it.key}" }) { group ->
@@ -340,8 +385,17 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         items(needsSorting,key = { it.path }) { file ->
-                            FileRow(file,selected = file.path in sortingSelection) {
-                                sortingSelection = if(file.path in sortingSelection) sortingSelection - file.path else sortingSelection + file.path
+                            val learned by produceState<ProjectMatch?>(null,file.path,revision) {
+                                value = withContext(Dispatchers.IO) { app.store.learnedProject(file.name) }
+                            }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                FileRow(file,selected = file.path in sortingSelection) {
+                                    sortingSelection = if(file.path in sortingSelection) sortingSelection - file.path else sortingSelection + file.path
+                                }
+                                learned?.let { suggestion ->
+                                    Text("Suggestion: ${suggestion.projectName} · learned from earlier assignments. Review before applying.",
+                                        fontSize = 11.sp,color = Muted,modifier = Modifier.padding(horizontal = 12.dp))
+                                }
                             }
                         }
                         if(needsSorting.isNotEmpty()) item {
@@ -414,7 +468,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                     }
                     "Recent" -> {
                         item { Title("Recent", "Likely AI files found on your phone.") }
-                        item { Text("All files stay in their original locations in this test. Uncertain sources need your review.",color = Muted,fontSize = 14.sp) }
+                        item { Text("Automatically organised files show their project. Uncertain files remain untouched for review.",color = Muted,fontSize = 14.sp) }
                         if(recent.isEmpty()) item { InfoCard("Nothing detected yet", "Launch a selected AI from the Hub, download a file, then come back here.",Icons.Outlined.InsertDriveFile) {} }
                         items(recent,key = { it.id }) { file -> FileRow(file) { detail = file } }
                     }
@@ -459,6 +513,36 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                         item { PermissionCard("Monitoring notification",notificationsAllowed,"A quiet status notification lets you stop a session. It disappears when the session ends.","Allow notification") {
                             if(Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                         } }
+                        item { Text("Monitoring",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item {
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Stop after AI inactivity",fontWeight = FontWeight.SemiBold)
+                                    Text("Default is 30 minutes. Changing this affects future monitoring sessions.",fontSize = 12.sp,color = Muted)
+                                    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        MonitoringSettings.allowedMinutes.forEach { minutes ->
+                                            FilterChip(selected = monitorTimeout == minutes,onClick = {
+                                                app.scope.launch { app.store.state("monitor_timeout_minutes",minutes.toString());app.store.history("Monitoring timeout changed","Future sessions stop after $minutes minutes of AI inactivity.");app.changed() }
+                                            },label = { Text("$minutes min") })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item { Text("Naming",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item {
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Reviewed file moves",fontWeight = FontWeight.SemiBold)
+                                    Text("Automatic high-confidence organisation keeps the downloaded filename. This preference only changes the default shown when you deliberately review a move.",fontSize = 12.sp,color = Muted)
+                                    NamingPreference.entries.forEach { choice ->
+                                        FilterChip(selected = namingPreference == choice,onClick = {
+                                            app.scope.launch { app.store.state("naming_preference",choice.name);app.store.history("Naming preference changed",choice.label);app.changed() }
+                                        },label = { Text(choice.label) })
+                                    }
+                                }
+                            }
+                        }
                         item { Text("Extra scan folders",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
                         item { Text("Downloads, Documents, Camera, Pictures, Movies and Music are included automatically when file access is allowed. Add any other shared folder you want included in deliberate scans.",fontSize = 13.sp,color = Muted) }
                         items(selectedFolders,key = { it.uri }) { folder ->
@@ -481,7 +565,16 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { OutlinedButton(onClick = { page = "Add apps" },modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Add,null);Spacer(Modifier.width(8.dp));Text("Add installed apps") } }
-                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: 30 minutes of AI inactivity. Phone scans change nothing; reviewed moves and tidy renames are recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Watching: Downloads and Documents, including their subfolders. Session: $monitorTimeout minutes of AI inactivity. High-confidence live AI downloads may be organised automatically; uncertain files stay untouched. Phone cleanup remains review-first. Every move is recorded with Undo. FileMate does not auto-delete files.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Drive",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item { InfoCard(if(externalStorage==null) "Optional storage folder not connected" else "Storage folder: ${externalStorage!!.name}",
+                            "Uses Android folder picker access instead of a developer cloud API. If Drive appears in the picker, you can grant one folder without an API key or metered developer service.",Icons.Outlined.CloudQueue) {
+                            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick={ storagePicker.launch(null) }) { Text(if(externalStorage==null) "Choose folder" else "Change") }
+                                if(externalStorage!=null) TextButton(onClick={ page="External storage" }) { Text("Browse") }
+                                if(externalStorage!=null) TextButton(onClick={ app.scope.launch { app.store.clearExternalStorageFolder();app.changed() } }) { Text("Disconnect") }
+                            }
+                        } }
                         item { Text("FileMate ${BuildConfig.VERSION_NAME} · Android 11 or newer",fontSize = 12.sp,color = Muted) }
                     }
                 }
@@ -494,7 +587,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             Text("${file.source ?: "Unknown source"} · ${file.confidence} source confidence",fontWeight = FontWeight.SemiBold)
             Text(file.reason)
             Text(if(file.projectName == null) "Project: Not assigned." else "Project: ${file.projectName} · ${file.projectConfidence.lowercase()} by you.")
-            Text("Original name and location unchanged.")
+            Text(if(file.projectConfidence == "Confirmed" && file.path.contains("/Documents/FileMate/")) "FileMate organised this file into its project folder. The move is recorded in Activity with Undo." else "This file has not been automatically moved by FileMate.")
             Text(file.path,fontSize = 12.sp)
             Text("${file.size} bytes · ${file.via}",fontSize = 12.sp,color = Muted)
         }
@@ -558,7 +651,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             null
         } catch(e: Exception) { e.message ?: "FileMate couldn't assign the selected files." }
     }
-    if(organiseEntries.isNotEmpty()) OrganiseOptionsDialog(organiseEntries.size,projects,onDismiss = { organiseEntries = emptyList() }) { projectId,tidy ->
+    if(organiseEntries.isNotEmpty()) OrganiseOptionsDialog(organiseEntries.size,projects,defaultTidy = namingPreference == NamingPreference.TIDY_WHEN_REVIEWED,onDismiss = { organiseEntries = emptyList() }) { projectId,tidy ->
         val project = projects.firstOrNull { it.id == projectId }
         if(project == null) "Project no longer exists."
         else {
@@ -660,9 +753,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         }) { Text(if(saving) "Saving…" else "Save") } }
     )
 }
-@Composable private fun OrganiseOptionsDialog(fileCount: Int, projects: List<Project>, onDismiss: () -> Unit, preview: suspend (Long,Boolean) -> String?) {
+@Composable private fun OrganiseOptionsDialog(fileCount: Int, projects: List<Project>, defaultTidy: Boolean = false, onDismiss: () -> Unit, preview: suspend (Long,Boolean) -> String?) {
     var selectedId by remember { mutableStateOf<Long?>(null) }
-    var tidyNames by remember { mutableStateOf(false) }
+    var tidyNames by remember(defaultTidy) { mutableStateOf(defaultTidy) }
     var message by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
