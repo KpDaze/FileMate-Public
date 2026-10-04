@@ -134,6 +134,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val namingPreference by produceState(NamingPreference.KEEP_CURRENT,revision) {
         value = withContext(Dispatchers.IO) { NamingSettings.parse(app.store.state("naming_preference")) }
     }
+    val externalStorage by produceState<GrantedStorageFolder?>(null,revision) { value = withContext(Dispatchers.IO) { app.store.externalStorageFolder() } }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
     val usageAllowed = remember(permissionTick) { Access.usage(activity) }
     val notificationsAllowed = remember(permissionTick) {
