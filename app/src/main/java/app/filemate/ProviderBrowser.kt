@@ -32,6 +32,10 @@ class ProviderBrowser(private val context: Context) {
 
     fun rename(uri: Uri, name: String): Uri = DocumentsContract.renameDocument(context.contentResolver,uri,ProjectNames.clean(name))
         ?: error("The selected storage provider could not rename this item.")
+
+    fun delete(uri: Uri) {
+        check(DocumentsContract.deleteDocument(context.contentResolver,uri)) { "The selected storage provider could not delete this item." }
+    }
 }
 
 
