@@ -53,21 +53,14 @@ fun ProviderScreen(app: FileMateApp, folder: GrantedStorageFolder, modifier: Mod
         AlertDialog(onDismissRequest={selectedEntry=null},title={Text("Manage ${item.name}")},
             text={Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(renameText,{renameText=it},label={Text("Name")},singleLine=true)
-                Text("Delete is immediate at the selected storage provider and may not have FileMate Undo. Use it only when you mean to remove this provider item.",fontSize=12.sp)
+                Text("Rename is applied only after you press Rename. FileMate does not offer provider deletion here because it cannot guarantee provider-side Trash or Undo.",fontSize=12.sp)
             }},
             confirmButton={Button(enabled=renameText.isNotBlank() && renameText!=item.name,onClick={
                 val uri=Uri.parse(item.uri);val name=renameText;scope.launch { runCatching { withContext(Dispatchers.IO) { ProviderBrowser(app).rename(uri,name) } }
                     .onSuccess { app.store.history("External item renamed","${item.name} → $name");selectedEntry=null;refresh++;app.changed() }
                     .onFailure { error=it.message ?: "Item could not be renamed." } }
             }) {Text("Rename")}},
-            dismissButton={Row {
-                TextButton(onClick={selectedEntry=null}) {Text("Cancel")}
-                TextButton(onClick={
-                    val uri=Uri.parse(item.uri);scope.launch { runCatching { withContext(Dispatchers.IO) { ProviderBrowser(app).delete(uri) } }
-                        .onSuccess { app.store.history("External item deleted",item.name);selectedEntry=null;refresh++;app.changed() }
-                        .onFailure { error=it.message ?: "Item could not be deleted." } }
-                }) {Text("Delete")}
-            }})
+            dismissButton={TextButton(onClick={selectedEntry=null}) {Text("Cancel")}})
     }
     if(newFolder) AlertDialog(onDismissRequest={newFolder=false},title={Text("Create folder")},
         text={OutlinedTextField(folderName,{folderName=it},label={Text("Folder name")},singleLine=true)},
