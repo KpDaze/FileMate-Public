@@ -3,7 +3,6 @@ package app.filemate
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import java.io.File
 
 data class ProviderEntry(val uri: String, val name: String, val mime: String, val size: Long, val modified: Long, val directory: Boolean)
 
