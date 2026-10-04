@@ -51,9 +51,7 @@ object ProjectRules {
         if(stemWords.isEmpty()) return null
         val exact = projects.mapNotNull { project ->
             val projectWords = words(project.name)
-            val distinctive = projectWords.size >= 2 ||
-                (projectWords.size == 1 && projectWords.single() !in setOf("filemate","chatgpt","qwen","grok","claude","gemini"))
-            if(distinctive && projectWords.all { it in stemWords })
+            if(projectWords.isNotEmpty() && projectWords.all { it in stemWords })
                 ProjectMatch(project.id, project.name, "High", "Filename uniquely names the project.")
             else null
         }
