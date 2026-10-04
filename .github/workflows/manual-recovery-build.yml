@@ -7,10 +7,6 @@ on:
       - recover-core-auto-sorting
     paths:
       - ".github/recovery-build-trigger"
-  push:
-    branches:
-      - recover-core-auto-sorting
-    paths:
       - ".github/workflows/manual-recovery-build.yml"
 
 permissions:
