@@ -73,3 +73,12 @@ object MonitoringSettings {
     val allowedMinutes = listOf(15L,30L,45L,60L)
     fun minutes(raw: String?): Long = raw?.toLongOrNull()?.takeIf { it in allowedMinutes } ?: DEFAULT_MINUTES
 }
+
+
+enum class NamingPreference(val label: String) {
+    KEEP_CURRENT("Keep current names"),
+    TIDY_WHEN_REVIEWED("Suggest tidy names")
+}
+object NamingSettings {
+    fun parse(raw: String?): NamingPreference = runCatching { NamingPreference.valueOf(raw.orEmpty()) }.getOrDefault(NamingPreference.KEEP_CURRENT)
+}
