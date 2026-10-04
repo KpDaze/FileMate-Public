@@ -331,7 +331,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                                 },label = { Text(rule.label) })
                                             }
                                         }
-                                        if(storageRule == StorageRule.PHONE_AND_DRIVE) Text("Google Drive connection is not configured yet. FileMate will not remove or upload anything until a verified Drive connection exists.",fontSize = 12.sp,color = Muted)
+                                        if(storageRule != StorageRule.PHONE_ONLY) Text(if(externalStorage==null) "Choose a storage-provider folder in Setup before copying anything." else "Selected provider: ${externalStorage!!.name}. Existing files are never changed just because this rule changes.",fontSize = 12.sp,color = Muted)
                                     }
                                 }
                             }
