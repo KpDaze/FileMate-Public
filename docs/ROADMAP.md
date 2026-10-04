@@ -15,11 +15,11 @@ This file records the current native source state. Historical emulator evidence 
 
 ## Still required for full Version 1
 
-### Google Drive connection and operations
+### Optional external storage connection and operations
 
 The approved product target remains optional Google Drive in the same app: account connection, browse/search, folders, move/rename, selected upload, project organisation, existing-Drive review and safe retry/offline behaviour. Drive-after-upload may remove a local copy only after successful upload is independently verified.
 
-No Google OAuth client configuration or Drive credential setup exists in either FileMate repository as of this recovery pass. The app must not pretend Drive is connected or upload/remove files until a real Google client is configured. Core local FileMate operation remains independent of Google.
+The recovered cost rule rejects metered developer APIs even when a free tier exists. FileMate therefore uses Android user-granted document-provider folders instead of a developer Drive API/OAuth client. The foundation now supports persisted folder access, browse/create/rename operations and verified file copies. A selected provider may be Google Drive if the installed Drive app exposes it through Android’s system picker. Core local FileMate operation remains independent of any provider.
 
 ### Verification and delivery
 
