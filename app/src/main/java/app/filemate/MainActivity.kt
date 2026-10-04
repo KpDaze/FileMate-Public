@@ -319,22 +319,20 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                     }
                                 }
                             }
+                            val projectStorageRule = app.store.projectStorageRule(selectedProject.id)
                             item {
-                                val storageRule by produceState(StorageRule.PHONE_ONLY,revision,selectedProject.id) {
-                                    value = withContext(Dispatchers.IO) { app.store.projectStorageRule(selectedProject.id) }
-                                }
                                 OutlinedCard(Modifier.fillMaxWidth()) {
                                     Column(Modifier.padding(15.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Text("Future file storage",fontWeight = FontWeight.SemiBold)
                                         Text("Phone only is the default. Existing files never move when this rule changes.",fontSize = 12.sp,color = Muted)
                                         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             StorageRule.entries.forEach { rule ->
-                                                FilterChip(selected = storageRule == rule,onClick = {
+                                                FilterChip(selected = projectStorageRule == rule,onClick = {
                                                     uiScope.launch { withContext(Dispatchers.IO) { app.store.setProjectStorageRule(selectedProject.id,rule) };app.changed() }
                                                 },label = { Text(rule.label) })
                                             }
                                         }
-                                        if(storageRule != StorageRule.PHONE_ONLY) Text(if(externalStorage==null) "Choose a storage-provider folder in Setup before copying anything." else "Selected provider: ${externalStorage!!.name}. Existing files are never changed just because this rule changes.",fontSize = 12.sp,color = Muted)
+                                        if(projectStorageRule != StorageRule.PHONE_ONLY) Text(if(externalStorage==null) "Choose a storage-provider folder in Setup before copying anything." else "Selected provider: ${externalStorage!!.name}. Existing files are never changed just because this rule changes.",fontSize = 12.sp,color = Muted)
                                     }
                                 }
                             }
@@ -345,14 +343,14 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             items(projectFiles,key = { it.path }) { file ->
                                 Column(verticalArrangement=Arrangement.spacedBy(4.dp)) {
                                     FileRow(file) { detail = file }
-                                    if(storageRule != StorageRule.PHONE_ONLY) {
+                                    if(projectStorageRule != StorageRule.PHONE_ONLY) {
                                         TextButton(enabled=externalStorage!=null,onClick={
                                             uiScope.launch {
-                                                val problem=withContext(Dispatchers.IO) { ProjectProviderUpload(activity,app.store).upload(file,storageRule) }
+                                                val problem=withContext(Dispatchers.IO) { ProjectProviderUpload(activity,app.store).upload(file,projectStorageRule) }
                                                 app.changed()
                                                 if(problem!=null) error=problem
                                             }
-                                        }) { Text(if(storageRule==StorageRule.DRIVE_AFTER_UPLOAD) "Copy to storage, then remove verified local copy" else "Copy to storage") }
+                                        }) { Text(if(projectStorageRule==StorageRule.DRIVE_AFTER_UPLOAD) "Copy to storage, then remove verified local copy" else "Copy to storage") }
                                     }
                                 }
                             }
