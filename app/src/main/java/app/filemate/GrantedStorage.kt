@@ -76,6 +76,6 @@ fun Store.recordProviderUpload(source: File, destination: Uri, providerName: Str
     val db=writableDatabase
     val projectName=projectId?.let { id -> db.rawQuery("SELECT name FROM projects WHERE id=?",arrayOf(id.toString())).use { if(it.moveToFirst()) it.getString(0) else null } }
     history("File copied to external storage",
-        "${source.name} → ${providerName}${projectName?.let { " / $it" }.orEmpty()}. Verified SHA-256 ${verifiedHash.take(12)}…. Local copy kept.")
+        "${source.name} → ${providerName}${projectName?.let { " / $it" }.orEmpty()}. Verified copy; local file kept.")
     state("provider_uri:${source.absolutePath}",destination.toString())
 }
