@@ -87,7 +87,7 @@ fun Store.completeGalleryMove(identity: String, oldPath: String, newPath: String
             put("project_id",projectId);put("project_confidence","Confirmed")
         },android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
         db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),projectId))
-        history("Gallery file moved","${newName} → Pictures/FileMate/${projectName}. Original media path was ${oldPath}.")
+        addHistory(db,"Gallery file moved","${newName} → Pictures/FileMate/${projectName}. Original media path was ${oldPath}.",System.currentTimeMillis())
         db.setTransactionSuccessful()
     } finally { db.endTransaction() }
 }
