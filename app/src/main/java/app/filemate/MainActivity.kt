@@ -131,6 +131,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
     val monitorTimeout by produceState(MonitoringSettings.DEFAULT_MINUTES,revision) {
         value = withContext(Dispatchers.IO) { MonitoringSettings.minutes(app.store.state("monitor_timeout_minutes")) }
     }
+    val namingPreference by produceState(NamingPreference.KEEP_CURRENT,revision) {
+        value = withContext(Dispatchers.IO) { NamingSettings.parse(app.store.state("naming_preference")) }
+    }
     val filesAllowed = remember(permissionTick) { Environment.isExternalStorageManager() }
     val usageAllowed = remember(permissionTick) { Access.usage(activity) }
     val notificationsAllowed = remember(permissionTick) {
@@ -506,6 +509,20 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 }
                             }
                         }
+                        item { Text("Naming",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
+                        item {
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp),verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Reviewed file moves",fontWeight = FontWeight.SemiBold)
+                                    Text("Automatic high-confidence organisation keeps the downloaded filename. This preference only changes the default shown when you deliberately review a move.",fontSize = 12.sp,color = Muted)
+                                    NamingPreference.entries.forEach { choice ->
+                                        FilterChip(selected = namingPreference == choice,onClick = {
+                                            app.scope.launch { app.store.state("naming_preference",choice.name);app.store.history("Naming preference changed",choice.label);app.changed() }
+                                        },label = { Text(choice.label) })
+                                    }
+                                }
+                            }
+                        }
                         item { Text("Extra scan folders",fontSize = 22.sp,fontWeight = FontWeight.Bold) }
                         item { Text("Downloads, Documents, Camera, Pictures, Movies and Music are included automatically when file access is allowed. Add any other shared folder you want included in deliberate scans.",fontSize = 13.sp,color = Muted) }
                         items(selectedFolders,key = { it.uri }) { folder ->
@@ -609,7 +626,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             null
         } catch(e: Exception) { e.message ?: "FileMate couldn't assign the selected files." }
     }
-    if(organiseEntries.isNotEmpty()) OrganiseOptionsDialog(organiseEntries.size,projects,onDismiss = { organiseEntries = emptyList() }) { projectId,tidy ->
+    if(organiseEntries.isNotEmpty()) OrganiseOptionsDialog(organiseEntries.size,projects,defaultTidy = namingPreference == NamingPreference.TIDY_WHEN_REVIEWED,onDismiss = { organiseEntries = emptyList() }) { projectId,tidy ->
         val project = projects.firstOrNull { it.id == projectId }
         if(project == null) "Project no longer exists."
         else {
@@ -711,9 +728,9 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         }) { Text(if(saving) "Saving…" else "Save") } }
     )
 }
-@Composable private fun OrganiseOptionsDialog(fileCount: Int, projects: List<Project>, onDismiss: () -> Unit, preview: suspend (Long,Boolean) -> String?) {
+@Composable private fun OrganiseOptionsDialog(fileCount: Int, projects: List<Project>, defaultTidy: Boolean = false, onDismiss: () -> Unit, preview: suspend (Long,Boolean) -> String?) {
     var selectedId by remember { mutableStateOf<Long?>(null) }
-    var tidyNames by remember { mutableStateOf(false) }
+    var tidyNames by remember(defaultTidy) { mutableStateOf(defaultTidy) }
     var message by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
