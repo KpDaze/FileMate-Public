@@ -17,7 +17,7 @@ class AutoSorter(private val store: Store) {
 
         val sharedRoot = Environment.getExternalStorageDirectory().canonicalFile
         val source = runCatching { file.canonicalFile }.getOrNull() ?: return null
-        if(!source.path.startsWith("${sharedRoot.path}/")) return null
+        if(source.path != sharedRoot.path && !source.path.startsWith("${sharedRoot.path}/")) return null
 
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).canonicalFile
         val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).canonicalFile
