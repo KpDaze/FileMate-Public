@@ -31,6 +31,12 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon
+      - name: Copy Android signing tools for local packaging
+        if: success()
+        run: |
+          mkdir -p signing-tools
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" signing-tools/
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" signing-tools/
       - name: Upload APK and reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -39,7 +45,6 @@ jobs:
           if-no-files-found: warn
           path: |
             app/build/outputs/apk/debug/*.apk
-            ${{ env.ANDROID_HOME }}/build-tools/35.0.0/lib/apksigner.jar
-            ${{ env.ANDROID_HOME }}/build-tools/35.0.0/zipalign
+            signing-tools/**
             app/build/reports/tests/**
             app/build/reports/lint-results-debug.*
