@@ -2,8 +2,8 @@ package app.filemate
 
 enum class StorageRule(val label: String) {
     PHONE_ONLY("Phone only"),
-    PHONE_AND_DRIVE("Phone + external storage"),
-    DRIVE_AFTER_UPLOAD("External storage after verified copy")
+    PHONE_AND_DRIVE("Phone + selected storage"),
+    DRIVE_AFTER_UPLOAD("Selected storage after verified copy")
 }
 
 data class ProjectStorageRule(val projectId: Long, val rule: StorageRule)
