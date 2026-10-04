@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import java.io.InputStream
 import java.io.OutputStream
+import java.io.File
 import java.security.MessageDigest
 
 data class GrantedStorageFolder(val uri: String, val name: String)
