@@ -40,6 +40,7 @@ class VerifiedProviderCopy(private val context: Context) {
 
     fun copy(source: File, tree: Uri, mime: String, displayName: String): ProviderCopyResult {
         val original = ContentFingerprint.read(source) ?: error("The source file could not be verified. Nothing was copied.")
+        check(source.isFile) { "The source file is no longer available." }
         val destination = storage.createFile(tree,mime,displayName)
         try {
             storage.openWrite(destination).use { output ->
