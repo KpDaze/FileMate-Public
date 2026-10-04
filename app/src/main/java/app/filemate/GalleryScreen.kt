@@ -159,7 +159,7 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                     projects.forEach { p -> FilterChip(selected = projectFilter == p.id,onClick = { projectFilter = p.id;clearSelection() },label = { Text(p.name) }) }
                 }
                 if(filter == "Screenshots" || filter == "Needs Sorting") {
-                    Text("Grouped by date and folder clues, not by topic or project. Camera folder items are excluded.",fontSize = 12.sp)
+                    Text("Grouped by date and folder clues. FileMate may show a learned project suggestion from earlier assignments, but grouping itself does not prove a topic or project. Camera folder items are excluded.",fontSize = 12.sp)
                     if(filter == "Needs Sorting") Text("Only accessible, unassigned screenshots appear here. Choose items, then confirm their project.",fontSize = 12.sp)
                     if(groupFilter != null) TextButton(onClick = { groupFilter = null;clearSelection();assignmentMessage = null }) { Text("Show all screenshot groups") }
                 }
