@@ -11,7 +11,8 @@ class AutoSorter(private val store: Store) {
     @Suppress("DEPRECATION")
     fun trySort(file: File, finding: Finding): OrganiseResult? {
         if(!file.isFile || finding.confidence != "High") return null
-        val match = ProjectRules.classify(file.name, store.projects()) ?: return null
+        val projects = store.projects()
+        val match = ProjectRules.classify(file.name,projects) ?: return null
         if(match.confidence != "High") return null
 
         val sharedRoot = Environment.getExternalStorageDirectory().canonicalFile
@@ -27,7 +28,7 @@ class AutoSorter(private val store: Store) {
         if(fingerprint.size != source.length() || fingerprint.modified != source.lastModified()) return null
 
         val entry = CleanupEntry(source.absolutePath,source.name,fingerprint.size,fingerprint.modified,root,0,fingerprint.hash)
-        val project = store.projects().firstOrNull { it.id == match.projectId } ?: return null
+        val project = projects.firstOrNull { it.id == match.projectId } ?: return null
         val plans = FileOrganiser(store).plans(listOf(entry),project,tidyNames = false)
         val plan = plans.singleOrNull()?.takeIf { it.supported } ?: return null
         return FileOrganiser(store).apply(listOf(plan))
