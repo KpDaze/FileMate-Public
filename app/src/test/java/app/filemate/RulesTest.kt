@@ -83,6 +83,13 @@ class RulesTest {
         assertEquals(StorageRule.PHONE_ONLY,DriveRules.parse("nonsense"))
     }
 
+    @Test fun monitoringTimeoutIsBoundedAndDefaultsSafely() {
+        assertEquals(30L,MonitoringSettings.minutes(null))
+        assertEquals(30L,MonitoringSettings.minutes("999"))
+        assertEquals(15L,MonitoringSettings.minutes("15"))
+        assertEquals(60L,MonitoringSettings.minutes("60"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
