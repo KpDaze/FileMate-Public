@@ -222,6 +222,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
         when(page) {
             "Add apps" -> AppPicker(app,hub,Modifier.padding(padding)) { page = "AI Hub" }
             "Gallery" -> GalleryScreen(app,resumed,galleryProjectId,Modifier.padding(padding),gallerySorting,galleryGroup) { page = if(gallerySorting) "Needs Sorting" else "Phone" }
+            "External storage" -> externalStorage?.let { ProviderScreen(app,it,Modifier.padding(padding)) { page="Setup" } } ?: run { LaunchedEffect(Unit) { page="Setup" } }
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),contentPadding = PaddingValues(22.dp,12.dp,22.dp,24.dp),verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 when(page) {
                     "AI Hub" -> {
@@ -570,6 +571,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             "Uses Android folder picker access instead of a developer cloud API. If Drive appears in the picker, you can grant one folder without an API key or metered developer service.",Icons.Outlined.CloudQueue) {
                             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick={ storagePicker.launch(null) }) { Text(if(externalStorage==null) "Choose folder" else "Change") }
+                                if(externalStorage!=null) TextButton(onClick={ page="External storage" }) { Text("Browse") }
                                 if(externalStorage!=null) TextButton(onClick={ app.scope.launch { app.store.clearExternalStorageFolder();app.changed() } }) { Text("Disconnect") }
                             }
                         } }
