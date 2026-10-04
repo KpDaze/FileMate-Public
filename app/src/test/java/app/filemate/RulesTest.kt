@@ -90,6 +90,12 @@ class RulesTest {
         assertEquals(60L,MonitoringSettings.minutes("60"))
     }
 
+    @Test fun namingPreferenceDefaultsToPreservingNames() {
+        assertEquals(NamingPreference.KEEP_CURRENT,NamingSettings.parse(null))
+        assertEquals(NamingPreference.KEEP_CURRENT,NamingSettings.parse("broken"))
+        assertEquals(NamingPreference.TIDY_WHEN_REVIEWED,NamingSettings.parse("TIDY_WHEN_REVIEWED"))
+    }
+
     @Test fun projectNamesAreManualCleanAndBounded() {
         assertEquals("Family Holiday",ProjectNames.clean("  Family   Holiday\n"))
         assertThrows(IllegalArgumentException::class.java) { ProjectNames.clean("   ") }
