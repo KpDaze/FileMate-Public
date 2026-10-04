@@ -271,7 +271,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                                 if(monitor.running) TextButton(onClick = { activity.startService(Intent(activity,MonitorService::class.java).setAction(MonitorService.STOP)) }) { Text("Stop monitoring") }
                             }
                         }
-                        item { Text(if(usageAllowed) "Stops after 30 minutes away from your selected AI apps." else "Without app activity access, sessions end 30 minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
+                        item { Text(if(usageAllowed) "Stops after $monitorTimeout minutes away from your selected AI apps." else "Without app activity access, sessions end $monitorTimeout minutes after the last Hub launch. Enable it in Setup to track normal app switching.",color = Muted,fontSize = 13.sp) }
                         if(sortingCount > 0) item { ActionRow("Needs Sorting","$sortingCount items need a project",Icons.Outlined.RuleFolder) { page = "Needs Sorting" } }
                         if(recent.isNotEmpty()) item { ActionRow("Recent detections","${recent.size} likely AI files · review source clues",Icons.Outlined.InsertDriveFile) { page = "Recent" } }
                         item { Text("High-confidence AI downloads can be organised automatically. Uncertain files stay untouched in Needs Sorting.",color = Muted,fontSize = 12.sp) }
@@ -365,7 +365,7 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
                             }
                         }
                         item { Text("Screenshot groups",fontWeight = FontWeight.SemiBold) }
-                        item { Text("Unassigned screenshots grouped by date and folder clues. These groups do not predict a project. Camera folder items stay out.",fontSize = 13.sp,color = Muted) }
+                        item { Text("Unassigned screenshots are grouped by date and folder clues. Learned project hints may appear for review, but FileMate does not auto-assign the group. Camera folder items stay out.",fontSize = 13.sp,color = Muted) }
                         if(galleryProgress.running) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
                         if(screenshotIntake.isEmpty()) item { Text(if(galleryProgress.running) "Checking accessible screenshots…" else "No accessible unassigned screenshots. Open Gallery to choose photo access or refresh.",fontSize = 13.sp,color = Muted) }
                         items(screenshotIntake,key = { "screenshots:${it.key}" }) { group ->
