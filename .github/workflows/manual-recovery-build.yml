@@ -2,6 +2,11 @@ name: FileMate manual recovery build
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - recover-core-auto-sorting
+    paths:
+      - ".github/workflows/manual-recovery-build.yml"
 
 permissions:
   contents: read
