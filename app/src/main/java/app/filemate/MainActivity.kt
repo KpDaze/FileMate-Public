@@ -147,6 +147,13 @@ private fun FileMate(app: FileMateApp, activity: MainActivity) {
             app.addSelectedFolder(uri)
         } catch(_: Exception) { error = "Android didn't keep access to that folder. Choose it again and allow access." }
     }
+    val storagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if(uri != null) try {
+            activity.contentResolver.takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            val storage=GrantedStorage(activity)
+            app.scope.launch { app.store.externalStorageFolder(GrantedStorageFolder(uri.toString(),storage.name(uri)));app.changed() }
+        } catch(_: Exception) { error = "Android did not keep access to that storage folder. Nothing was uploaded or removed." }
+    }
     LaunchedEffect(needsSorting) {
         val available = needsSorting.mapTo(mutableSetOf()) { it.path }
         sortingSelection = sortingSelection.intersect(available)
