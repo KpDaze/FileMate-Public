@@ -33,3 +33,10 @@ class ProviderBrowser(private val context: Context) {
     fun rename(uri: Uri, name: String): Uri = DocumentsContract.renameDocument(context.contentResolver,uri,ProjectNames.clean(name))
         ?: error("The selected storage provider could not rename this item.")
 }
+
+
+fun ProviderBrowser.search(tree: Uri, query: String): List<ProviderEntry> {
+    val needle=query.trim().lowercase()
+    if(needle.isBlank()) return children(tree)
+    return children(tree).filter { it.name.lowercase().contains(needle) }
+}
