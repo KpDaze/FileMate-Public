@@ -1,8 +1,6 @@
 package app.filemate
 
 import android.content.Context
-import android.net.Uri
-import java.io.File
 
 object MimeGuess {
     fun fromName(name: String): String = when(name.substringAfterLast('.', "").lowercase()) {
