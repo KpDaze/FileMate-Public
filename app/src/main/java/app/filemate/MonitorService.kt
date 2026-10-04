@@ -211,8 +211,10 @@ class MonitorService : Service() {
                     val observed = app.store.observe(file,finding,"Live monitoring")
                     if(observed) {
                         val result = AutoSorter(app.store).trySort(file,finding)
-                        if(result != null && result.applied == 0 && (result.failed > 0 || result.skipped > 0)) {
-                            app.store.history("Automatic organisation left for review",
+                        when {
+                            result == null -> Unit
+                            result.applied > 0 -> app.store.history("Automatically organised","${file.name}. High-confidence source and project evidence agreed.")
+                            result.failed > 0 || result.skipped > 0 -> app.store.history("Automatic organisation left for review",
                                 result.messages.take(3).joinToString(" ").ifBlank { file.name })
                         }
                     }
