@@ -256,6 +256,41 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
                 item { TextButton(onClick = { moveItem=detail;moveProjectId=detail.projectId;moveTidy=false;movePlan=null;selected=null }) { Text("Move / rename file…") } }
             }
         },confirmButton = { TextButton(enabled = !assigning,onClick = { selected = null }) { Text("Done") } })
+    moveItem?.let { item ->
+        val chosenProject=projects.firstOrNull { it.id == moveProjectId }
+        AlertDialog(onDismissRequest={ if(!moving) { moveItem=null;movePlan=null } },
+            title={ Text(if(movePlan==null) "Move / rename file" else "Review file change") },
+            text={ Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(item.name,fontWeight=FontWeight.SemiBold)
+                if(item.clues.camera) Text("Camera media: this changes only because you deliberately opened and confirm this action.",fontSize=12.sp,color=MaterialTheme.colorScheme.error)
+                if(movePlan==null) {
+                    Text("Choose a project. Nothing changes until you review the destination and confirm.",fontSize=13.sp)
+                    Column(Modifier.heightIn(max=220.dp).verticalScroll(rememberScrollState())) {
+                        projects.forEach { p -> TextButton(onClick={moveProjectId=p.id}) { RadioButton(selected=moveProjectId==p.id,onClick=null);Text(p.name) } }
+                    }
+                    Row(verticalAlignment=Alignment.CenterVertically) { Checkbox(moveTidy,{moveTidy=it});Text("Use tidy filename") }
+                } else {
+                    Text("From\n${movePlan!!.sourcePath}\n\nTo\n${movePlan!!.targetPath}",fontSize=12.sp)
+                    Text(if(movePlan!!.supported) "Contents are verified before and after the move. Existing files are never overwritten." else movePlan!!.note,fontSize=12.sp)
+                }
+            } },
+            dismissButton={ TextButton(enabled=!moving,onClick={ if(movePlan!=null) movePlan=null else moveItem=null }) { Text(if(movePlan!=null) "Back" else "Cancel") } },
+            confirmButton={
+                if(movePlan==null) Button(enabled=chosenProject!=null && !moving,onClick={
+                    val p=chosenProject ?: return@Button
+                    scope.launch { movePlan=withContext(Dispatchers.IO) { GalleryFileOrganiser(app.store).plan(item,p,moveTidy) } }
+                }) { Text("Review") }
+                else Button(enabled=movePlan!!.supported && !moving,onClick={
+                    val p=chosenProject ?: return@Button;val plan=movePlan!!
+                    moving=true;scope.launch {
+                        val problem=withContext(Dispatchers.IO) { GalleryFileOrganiser(app.store).apply(plan,p.id) }
+                        moving=false
+                        if(problem==null) { moveItem=null;movePlan=null;assignmentMessage="File moved safely to ${p.name}.";app.refreshGallery();app.changed() }
+                        else error=problem
+                    }
+                }) { Text(if(moving) "Moving…" else "Confirm move") }
+            })
+    }
     review?.let { ids ->
         val reviewItems = visible.filter { it.identity in ids }
         val valid = reviewItems.size == ids.size && targetChosen && (target == null || projects.any { it.id == target })
