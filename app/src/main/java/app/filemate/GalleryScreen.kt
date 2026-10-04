@@ -108,6 +108,18 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
         val byId = filtered.associateBy { it.identity }
         groups.map { it to it.identities.mapNotNull(byId::get) }.filter { it.second.isNotEmpty() }
     } else listOf(null to filtered)
+    val groupSuggestions by produceState<Map<String,ProjectMatch>>(emptyMap(),groups,revision) {
+        value = withContext(Dispatchers.IO) {
+            val byId = visible.associateBy { it.identity }
+            groups.mapNotNull { group ->
+                val suggestions = group.identities.mapNotNull { id -> byId[id]?.let { app.store.learnedProject(it.name) } }
+                val counts = suggestions.groupingBy { it.projectId }.eachCount()
+                val best = counts.maxByOrNull { it.value }
+                val unique = best?.takeIf { top -> top.value >= 2 && counts.count { it.value == top.value } == 1 }
+                unique?.let { top -> group.key to suggestions.first { it.projectId == top.key } }
+            }.toMap()
+        }
+    }
     val detail = visible.firstOrNull { it.identity == selected }
     LazyVerticalGrid(columns = GridCells.Fixed(3),modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp,12.dp,20.dp,24.dp),horizontalArrangement = Arrangement.spacedBy(8.dp),verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -197,7 +209,11 @@ fun GalleryScreen(app: FileMateApp, resumed: Boolean, initialProjectId: Long?, m
         }
         displayGroups.forEach { (group,media) ->
             if(group != null) item(key = "group:${group.key}",span = { GridItemSpan(maxLineSpan) }) {
-                Column { Text(group.day,fontWeight = FontWeight.SemiBold);Text("${group.folder} · ${media.size} items",fontSize = 12.sp) }
+                Column {
+                    Text(group.day,fontWeight = FontWeight.SemiBold)
+                    Text("${group.folder} · ${media.size} items",fontSize = 12.sp)
+                    groupSuggestions[group.key]?.let { Text("Likely ${it.projectName} from earlier assignments · review before applying",fontSize = 11.sp,color = MaterialTheme.colorScheme.primary) }
+                }
             }
             items(media,key = { it.identity }) { item ->
                 OutlinedCard(onClick = { if(selecting) selection = if(item.identity in selection) selection - item.identity else selection + item.identity else selected = item.identity },modifier = Modifier.fillMaxWidth()) {
