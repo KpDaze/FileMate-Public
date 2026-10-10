@@ -131,7 +131,9 @@ class FileMateApp : Application() {
             }
             if(errors.isEmpty()) {
                 store.state("last_check",System.currentTimeMillis().toString())
-                store.history("Catch-up complete", "$found likely AI files found. $indexed accessible files checked in Downloads and Documents. Existing files are indexed on first access.")
+                // Record meaningful new detections, not a duplicate success entry on every resume.
+                // The scanner's return count is new candidate observations, not all historical AI files.
+                if(found > 0) store.history("Catch-up found new candidates", "$found newly detected possible AI files among $indexed accessible files checked. Source attribution may still need review.")
             } else store.history("Catch-up incomplete", "Some folders could not be read: ${errors.distinct().joinToString()}. They will be retried next time.")
         } catch(e: Exception) { store.history("Catch-up needs another try",e.message ?: "Storage is unavailable") }
         finally { checking.value = false; changed() }
