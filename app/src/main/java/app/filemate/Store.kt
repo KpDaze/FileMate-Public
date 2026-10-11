@@ -365,6 +365,30 @@ class Store(context: Context, databaseName: String = "filemate.db") : SQLiteOpen
                 put("name",file.name);put("path",file.absolutePath);put("size",stamp.size);put("detected",System.currentTimeMillis())
                 put("source",finding.source);put("confidence",finding.confidence);put("reason",finding.reason);put("via",via)
             })
+            // Automatic project filing requires independent, unambiguous project evidence.
+            // Never infer a project from source confidence alone, and never touch media bytes here.
+            if(!baseline && finding.candidate && finding.confidence == "High" && previous == null) {
+                val candidates = db.rawQuery("SELECT id,name FROM projects",null).use { cursor ->
+                    buildList {
+                        while(cursor.moveToNext()) {
+                            val name = cursor.getString(1)
+                            val words = name.lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotBlank() }
+                            val filenameWords = file.name.substringBeforeLast('.',file.name).lowercase()
+                                .split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotBlank() }
+                            if(words.isNotEmpty() && filenameWords.windowed(words.size).any { it == words })
+                                add(cursor.getLong(0) to name)
+                        }
+                    }
+                }
+                if(candidates.size == 1) {
+                    val (projectId,projectName) = candidates.single()
+                    db.update("files",ContentValues().apply {
+                        put("project_id",projectId);put("project_confidence","High")
+                    },"path=? AND project_id IS NULL",arrayOf(file.absolutePath))
+                    insertHistory(db,"Automatically assigned to $projectName",
+                        "${file.name}: High source confidence and unique full project-name match. File remains in its original location.",System.currentTimeMillis())
+                }
+            }
             if(!baseline && !finding.candidate) {
                 val count = (state("ignored")?.toLongOrNull() ?: 0) + 1
                 state("ignored",count.toString())
