@@ -93,6 +93,8 @@ fun Store.assignMedia(identity: String, projectId: Long?) = synchronized(this) {
         else db.execSQL("UPDATE cleanup_entries SET flags=flags & ? WHERE path=?",arrayOf(CleanupFlags.UNSORTED_DOWNLOAD.inv(),item[1]))
         refreshCleanupCounts(db)
         if(projectId != null) db.execSQL("UPDATE projects SET updated=? WHERE id=?",arrayOf(System.currentTimeMillis(),projectId))
+        val camera = db.rawQuery("SELECT camera FROM media WHERE identity=?",arrayOf(identity)).use { it.moveToFirst();it.getInt(0)==1 }
+        if(!camera) learnReviewedProject(item[1],item[0],projectId)
         history(if(projectId == null) "Gallery project cleared" else "Gallery assigned to $projectName", "${item[0]}. File unchanged.")
         db.setTransactionSuccessful()
     } finally { db.endTransaction() }

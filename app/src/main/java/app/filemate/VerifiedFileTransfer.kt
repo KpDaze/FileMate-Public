@@ -13,7 +13,7 @@ import java.nio.file.StandardOpenOption.WRITE
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
-data class ContentFingerprint(val size: Long, val modified: Long, val hash: String) {
+data class ContentFingerprint(val size: Long, val modified: Long, val hash: String, val identity: String? = null) {
     companion object {
         /** A failed or changing read never becomes a trusted fingerprint. */
         fun read(file: File): ContentFingerprint? = runCatching { readChecked(file) }.getOrNull()
@@ -45,7 +45,7 @@ data class ContentFingerprint(val size: Long, val modified: Long, val hash: Stri
                 file.lastModified() == modified) {
                 "File changed while reading"
             }
-            return ContentFingerprint(size,modified,digest.digest().joinToString("") { "%02x".format(it) })
+            return ContentFingerprint(size,modified,digest.digest().joinToString("") { "%02x".format(it) },before.fileKey()?.toString())
         }
 
         fun matches(file: File, size: Long, hash: String?): Boolean {
@@ -74,7 +74,10 @@ class VerifiedFileTransfer internal constructor(
             "The file content changed or could not be read. Nothing was moved."
         }
         if(Files.exists(target.toPath(),NOFOLLOW_LINKS)) throw FileAlreadyExistsException(target.path)
+        val sourceParent = source.parentFile?.canonicalPath
+        val targetParent = target.parentFile?.canonicalPath
         beforeCreate(target)
+        require(source.parentFile?.canonicalPath == sourceParent && target.parentFile?.canonicalPath == targetParent) { "A parent folder changed; nothing was moved." }
         // Opening the source first means an unreadable source does not create an empty target.
         FileChannel.open(source.toPath(),READ,NOFOLLOW_LINKS).use { input ->
             FileChannel.open(target.toPath(),CREATE_NEW,WRITE).use { output ->
@@ -93,14 +96,20 @@ class VerifiedFileTransfer internal constructor(
                 output.force(true)
             }
         }
+        val copiedIdentity = Files.readAttributes(target.toPath(),BasicFileAttributes::class.java,NOFOLLOW_LINKS).fileKey()?.toString()
         afterCopy(source,target)
         if(!ContentFingerprint.matches(target,expectedSize,expectedHash)) {
             throw IOException("The new copy could not be verified. The source was kept; both paths need review.")
         }
+        if(Files.readAttributes(target.toPath(),BasicFileAttributes::class.java,NOFOLLOW_LINKS).fileKey()?.toString() != copiedIdentity ||
+            source.parentFile?.canonicalPath != sourceParent || target.parentFile?.canonicalPath != targetParent)
+            throw IOException("A file or folder was replaced during the move. Both paths were kept for review.")
         if(!target.setLastModified(original.modified)) {
             throw IOException("The modification time could not be preserved. Both paths were kept for review.")
         }
-        if(ContentFingerprint.read(source) != original || !ContentFingerprint.matches(target,expectedSize,expectedHash)) {
+        if(ContentFingerprint.read(source) != original || !ContentFingerprint.matches(target,expectedSize,expectedHash) ||
+            Files.readAttributes(target.toPath(),BasicFileAttributes::class.java,NOFOLLOW_LINKS).fileKey()?.toString() != copiedIdentity ||
+            source.parentFile?.canonicalPath != sourceParent || target.parentFile?.canonicalPath != targetParent) {
             throw IOException("A file changed during the move. Both paths were kept for review.")
         }
         Files.delete(source.toPath())

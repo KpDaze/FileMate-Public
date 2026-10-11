@@ -19,7 +19,8 @@ data class OrganisePlan(
     val projectId: Long,
     val projectName: String,
     val supported: Boolean,
-    val note: String
+    val note: String,
+    val automatic: Boolean = false
 )
 
 data class FileActionRecord(
@@ -38,7 +39,8 @@ data class FileActionRecord(
     val previousProjectConfidence: String,
     val created: Long,
     val status: String,
-    val error: String?
+    val error: String?,
+    val automatic: Boolean = false
 )
 
 data class OrganiseResult(val applied: Int, val skipped: Int, val failed: Int, val messages: List<String>)
@@ -51,16 +53,19 @@ object FileNaming {
         val extension = original.substringAfterLast('.',"").takeIf { it.isNotEmpty() && original.contains('.') }
         val stem = if(extension == null) original else original.dropLast(extension.length + 1)
         val projectPart = safe(project,50).replace(' ','_')
-        val description = safe(stem,75).replace(' ','_').ifBlank { "File" }
         val date = SimpleDateFormat("yyyy-MM-dd",Locale.ROOT).format(Date(modified.takeIf { it > 0 } ?: System.currentTimeMillis()))
-        return "$projectPart" + "_${description}_$date" + (extension?.let { ".${safe(it,12)}" } ?: "")
+        val cleanedStem = safe(stem,220).replace(' ','_').ifBlank { "File" }
+        val withoutProject = if(cleanedStem.equals(projectPart,true)) "File"
+            else if(cleanedStem.startsWith("${projectPart}_",true)) cleanedStem.drop(projectPart.length+1) else cleanedStem
+        val description = withoutProject.removeSuffix("_${date.replace('-','_')}").take(75).ifBlank { "File" }
+        return "${projectPart}_${description}_$date" + (extension?.let { ".${safe(it,12)}" } ?: "")
     }
     private fun safe(raw: String, limit: Int): String = unsafe.replace(raw,"_").trim().let { spaces.replace(it," ") }.trim('.',' ').take(limit)
 }
 
 class FileOrganiser(private val store: Store, private val transfer: VerifiedFileTransfer = VerifiedFileTransfer()) {
     // UI requests and startup recovery use separate instances; serialise journal transitions.
-    companion object { private val actionLock = Any() }
+    companion object { internal val actionLock = Any() }
     @Suppress("DEPRECATION")
     fun plans(entries: List<CleanupEntry>, project: Project, tidyNames: Boolean): List<OrganisePlan> {
         val sharedRoot = Environment.getExternalStorageDirectory().canonicalFile
@@ -70,8 +75,9 @@ class FileOrganiser(private val store: Store, private val transfer: VerifiedFile
             val source = if(entry.path.startsWith('/')) runCatching { File(entry.path).canonicalFile }.getOrNull() else null
             val insideShared = source != null && source.path.startsWith("${sharedRoot.path}/")
             val requestedName = if(tidyNames) FileNaming.tidy(project.name,entry.name,entry.modified) else entry.name
-            val target = uniqueTarget(destination,requestedName,reserved)
-            val same = source?.path == target.path
+            val requestedTarget = File(destination,requestedName)
+            val same = source?.path == requestedTarget.canonicalPath
+            val target = if(same) requestedTarget else uniqueTarget(destination,requestedName,reserved)
             val fingerprint = if(insideShared && source?.isFile == true && !same) ContentFingerprint.read(source) else null
             val unchanged = fingerprint != null && fingerprint.size == entry.size &&
                 (entry.modified <= 0 || fingerprint.modified == entry.modified) &&

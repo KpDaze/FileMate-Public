@@ -22,9 +22,9 @@ object CleanupRules {
     private const val OLD_MILLIS = 365L * 24 * 60 * 60 * 1000
     private val ARCHIVES = setOf("zip","7z","rar","tar","gz","bz2","xz","tgz")
     fun flags(name: String, root: String, size: Long, modified: Long,
-        assigned: Boolean, knownAi: Boolean, now: Long): Int {
+        assigned: Boolean, knownAi: Boolean, now: Long, classifiedAi: Boolean? = null): Int {
         var value = 0
-        if(knownAi || FileRules.classify(name,null,now).candidate) value = value or CleanupFlags.LIKELY_AI
+        if(classifiedAi ?: (knownAi || FileRules.classify(name,null,now).candidate)) value = value or CleanupFlags.LIKELY_AI
         if(root == "Downloads" && !assigned) value = value or CleanupFlags.UNSORTED_DOWNLOAD
         if(size >= CleanupScanner.LARGE_BYTES) value = value or CleanupFlags.LARGE
         if(root != "Camera" && root != "Pictures" && modified in 1 until (now - OLD_MILLIS)) value = value or CleanupFlags.OLD
@@ -77,7 +77,7 @@ private data class Candidate(
     val unchanged: () -> Boolean
 )
 
-class CleanupScanner(private val resolver: ContentResolver) {
+class CleanupScanner(private val resolver: ContentResolver, private val learnedAi: (File) -> Boolean? = { null }) {
     companion object {
         const val LARGE_BYTES = 100L * 1024 * 1024
         private val TREE_COLUMNS = arrayOf(
@@ -126,7 +126,7 @@ class CleanupScanner(private val resolver: ContentResolver) {
         candidates.forEachIndexed { index,item ->
             currentCoroutineContext().ensureActive()
             flags[index] = CleanupRules.flags(item.name,item.root,item.size,item.modified,
-                item.path in assignedPaths,item.path in knownAiPaths,now)
+                item.path in assignedPaths,item.path in knownAiPaths,now,if(item.path.startsWith('/')) learnedAi(File(item.path)) else null)
         }
 
         progress(CleanupProgress(true,"Checking exact duplicates",candidates.size))

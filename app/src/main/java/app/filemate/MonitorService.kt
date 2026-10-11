@@ -26,7 +26,8 @@ class AiActivity(private val context: Context, private val selected: () -> List<
     private var since = System.currentTimeMillis() - 1000
     private var foreground: String? = null
     private var last: AiContext? = null
-    private val clock = SessionClock()
+    val timeoutMinutes = MonitoringSettings.minutes((context.applicationContext as FileMateApp).store.state("monitor_timeout_minutes"))
+    private val clock = SessionClock(timeoutMinutes * 60_000L)
     init { clock.touch(SystemClock.elapsedRealtime()) }
     @Synchronized fun hubLaunch(packageName: String, label: String) {
         clock.touch(SystemClock.elapsedRealtime())
@@ -72,6 +73,7 @@ class MonitorService : Service() {
     private val startLock = Mutex()
     private val observers = ConcurrentHashMap<String,FileObserver>()
     private val pending = ConcurrentHashMap<String,Job>()
+    private val newAtFirstEvent = ConcurrentHashMap<String,Boolean>()
     private lateinit var activity: AiActivity
     private var ticker: Job? = null
     @Volatile private var closing = false
@@ -104,7 +106,7 @@ class MonitorService : Service() {
                         // Close the gap between initial indexing and watcher installation.
                         app.reconcile()
                         app.store.state("session_active","true")
-                        app.store.history("Monitoring started", "Download events are being watched. Your files remain unchanged.")
+                        app.store.history("Monitoring started", "Download events are being watched. High source and unique project matches may organise new files; uncertain files stay untouched.")
                     }
                     activity.hubLaunch(pkg,label)
                     if(ticker == null) ticker = scope.launch {
@@ -113,7 +115,7 @@ class MonitorService : Service() {
                             if(!Environment.isExternalStorageManager()) { fail("File access was removed. Restore it in Setup.");break }
                             activity.refresh()
                             if(activity.expired()) {
-                                finishSession("Monitoring ended automatically", "No selected AI activity for 30 minutes. Reopening FileMate checks for missed files.");break
+                                finishSession("Monitoring ended automatically", "No selected AI activity for ${activity.timeoutMinutes} minutes. Reopening FileMate checks for missed files.");break
                             }
                             app.monitor.value = app.monitor.value.copy(usageAvailable = Access.usage(this@MonitorService))
                         }
@@ -132,7 +134,7 @@ class MonitorService : Service() {
         val stop = PendingIntent.getService(this,2,Intent(this,MonitorService::class.java).setAction(STOP),PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this,CHANNEL).setSmallIcon(R.drawable.ic_monitor)
             .setContentTitle("FileMate is watching for AI downloads")
-            .setContentText("Stops automatically after 30 minutes of AI inactivity")
+            .setContentText("Stops automatically after ${activity.timeoutMinutes} minutes of AI inactivity")
             .setContentIntent(open).addAction(0,"Stop monitoring",stop)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).build()
     }
@@ -171,7 +173,7 @@ class MonitorService : Service() {
                         try {
                             if(!insideRoot(file)) return@launch
                             if(file.isDirectory) { watchTree(file);scanNewDirectory(file) }
-                            else schedule(file)
+                            else schedule(file,allowAutomatic = true)
                         } catch(e: Exception) { app.store.history("A file event needs catch-up",e.message ?: "Reopen FileMate to retry.");app.changed() }
                     }
                 }
@@ -182,12 +184,23 @@ class MonitorService : Service() {
         }
     }
     private fun scanNewDirectory(dir: File) {
-        walkFiles(dir,{ app.store.history("Folder needs catch-up",it.name) }) { schedule(it) }
+        walkFiles(dir,{ app.store.history("Folder needs catch-up",it.name) }) { schedule(it,allowAutomatic = false) }
     }
-    @Synchronized private fun schedule(file: File) {
+    @Synchronized private fun schedule(file: File, allowAutomatic: Boolean) {
         if(closing || FileRules.temporary(file.name)) return
+        @Suppress("DEPRECATION")
+        val managed = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),"FileMate")
+        val canonical = runCatching { file.canonicalPath }.getOrNull() ?: return
+        val managedPath = runCatching { managed.canonicalPath }.getOrNull() ?: return
+        if(canonical == managedPath || canonical.startsWith("$managedPath/")) return
+        val eventTime = System.currentTimeMillis()
+        val eventContext = activity.refresh()
         val path = file.absolutePath
+        // Preserve the first live event's newness while CLOSE_WRITE reschedules stability checks.
+        // Reopening FileMate may index this same file before those checks finish.
+        val newAtEvent = (newAtFirstEvent[path] ?: !app.store.knownPath(path)) && allowAutomatic
         pending.remove(path)?.cancel()
+        newAtFirstEvent[path] = newAtEvent
         pending[path] = scope.launch {
             // Event-triggered stability checks target one file, never a recurring Downloads scan.
             var previous: FileStamp? = null
@@ -200,14 +213,16 @@ class MonitorService : Service() {
                 previous = current
                 if(stable >= 2) {
                     val now = System.currentTimeMillis()
-                    val finding = FileRules.classify(file.name,activity.refresh(),now)
-                    app.store.observe(file,finding,"Live monitoring")
+                    val fresh = allowAutomatic && eventTime - file.lastModified() in 0..120_000 && !closing
+                    val result = AutoSorter(app.store).observeLive(file,eventContext,now,fresh,newAtEvent)
+                    if(result != null && (result.failed > 0 || result.skipped > 0))
+                        app.store.history("Automatic organisation needs review",result.messages.joinToString(" ").ifBlank { file.name })
                     app.changed()
                     return@launch
                 }
             }
             // A still-changing download is deliberately left to its next event or catch-up.
-        }.also { job -> job.invokeOnCompletion { pending.remove(path,job) } }
+        }.also { job -> job.invokeOnCompletion { synchronized(this@MonitorService) { if(pending.remove(path,job)) newAtFirstEvent.remove(path) } } }
     }
     private fun fail(message: String) {
         app.monitor.value = MonitorState(error = message)

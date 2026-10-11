@@ -84,7 +84,7 @@ class FileMateApp : Application() {
             }
             cleanup.value = CleanupProgress(running = true,stage = "Preparing scan")
             try {
-                val scanner = CleanupScanner(contentResolver)
+                val scanner = CleanupScanner(contentResolver) { file -> store.classifyFile(file,null,System.currentTimeMillis()).candidate }
                 val result = scanner.scan(cleanupRoots(),store.selectedFolders(),store.assignedPaths(),store.knownAiPaths()) {
                     cleanup.value = it
                 }
@@ -124,7 +124,7 @@ class FileMateApp : Application() {
                     if(!FileRules.temporary(file.name)) {
                         indexed++
                         // Only use names in catch-up: past source activity cannot be reconstructed reliably.
-                        if(store.observe(file,FileRules.classify(file.name,null,System.currentTimeMillis()),"Catch-up",baseline)) found++
+                        if(store.observe(file,store.classifyFile(file,null,System.currentTimeMillis()),"Catch-up",baseline)) found++
                     }
                 }
                 if(complete) store.state(key,System.currentTimeMillis().toString())

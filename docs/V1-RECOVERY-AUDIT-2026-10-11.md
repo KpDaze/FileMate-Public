@@ -43,3 +43,15 @@ Created 2026-10-11. This is an evidence ledger, not a declaration that V1 is com
 2. Convert each row above to a source-linked finding and test. Distinguish a missing feature from a broken existing feature. Prioritise F02/F03/F04/F07 and phone UI failures.
 3. Fix in batches with static/unit/lint verification first; no unapproved emulator. Phone acceptance uses disposable files.
 4. Record tested commit, APK SHA-256, signer scheme/certificate, and user phone outcomes before closing any row.
+
+## Coordinated automatic-organiser repair — 11 October 2026
+
+All fifteen findings F01–F15 above remain **OPEN**. The original rows and their acceptance criteria are retained verbatim. Code changes and host checks do not close phone findings or declare V1 complete.
+
+### Repository reconciliation
+- Read the complete original `Personal_AI_File_Organiser_Handover.txt` (713 lines) and `FileMate-DEFINITIVE-Handover-2026-10-04.md` (263 lines) from Library. Two exact-title copies of the definitive handover contained identical text. Neither source was edited.
+- Inspected `main` at `743b9a6b1a6ea2f45b29bdad8edf58a13ddc6f4e`. That commit changed only `Store.observe`: it assigned project metadata but did not invoke a physical move and did not explicitly restrict the assignment block to live events. Its project assignment was not a complete automatic organiser.
+- The recovery code described by the October 4 handover exists on `recover-core-auto-sorting` at `cc9b8ec022299e806eb7db9f42d0ac05b10a5215`; it was absent from `main`. Main advertised app versionCode 5/schema 6, while the documented installed recovery app was versionCode 6/schema 8. Installing an unchanged main-line schema over that recovery database would fail. Recovery settings/provider/Gallery move controls must be preserved alongside an additive migration; no wholesale branch merge or workflow restoration is authorised by this repair.
+- No `.github/workflows` files exist in the inspected main baseline. This batch must not add automatic build/emulator triggers.
+
+The batch's implementation details, independent verification evidence, remaining limits and disposable-file phone checks are tracked in [AUTOMATIC-ORGANISER-REPAIR-2026-10-11.md](AUTOMATIC-ORGANISER-REPAIR-2026-10-11.md). That report supplements this ledger; it does not replace the original specification, definitive handover or any F01–F15 requirement.
