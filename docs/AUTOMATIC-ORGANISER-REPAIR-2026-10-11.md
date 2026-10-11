@@ -36,6 +36,16 @@ Verification was performed locally without an Android emulator or GitHub Actions
 - `python3 tools/verify-schema-migration.py` executes SQL extracted from the actual Kotlin schema functions against host SQLite. It verifies 6→9 and 8→9 migration, every seeded old row, schema equivalence to a fresh database, foreign keys, integrity, reviewed-only seeding and live eligibility vetoes. Seeded data includes projects, Gallery, favourites, albums, all journal states, provider settings/rules and legacy learning rows. This is not Android SQLiteOpenHelper/device proof.
 - The original 15 phone-finding rows are checked verbatim against the baseline. No requirement was deleted, silently deferred or marked complete.
 
+## Phone-test APK
+
+`FileMate-0.4.1-Organiser-Repair.apk` was built from tested local commit `9cbec405658bb098477fe73d88d395ce67225574` and saved as a durable phone-test download. GitHub source checkpoint [`7b2f335d6017cb40e93fc2f77fc3fcdc221f7ff2`](https://github.com/KpDaze/FileMate-Public/commit/7b2f335d6017cb40e93fc2f77fc3fcdc221f7ff2) has the identical complete Git tree, `7d469b3997c4ea524ff0c51f0fe14584c3bc296c`. The connected GitHub writer was used because terminal Git had no push credentials. The later documentation checkpoint does not change app code.
+
+- Package `app.filemate`, versionCode **7**, version **0.4.1-organiser-repair**; size **10,050,352 bytes**.
+- APK SHA-256: `d4841ca38eac9de8d37d590fa69f778e7970464738965d3f9d1ff20733163a9b`.
+- Signing certificate SHA-256: `538093df7ff5c1e9658785da5530307e3db4d01daa921b3fcbc1e3e7a1bb798b`, matching the existing private signing backup. Exactly one personal signer; no Android debug signer.
+- The independent Verifier checked package/version, both hashes, **V3-only** signing and 16 KB ZIP alignment. No private signing material is included in the repository or APK deliverables.
+- Public machine-readable evidence is in [the APK proof](organiser-repair-apk-proof-2026-10-11.json). Installation and preservation of actual phone data still require the update test below; matching the package and certificate is not a claim that installation has already passed.
+
 ## What remains open
 
 | Audit finding | Status after this batch |

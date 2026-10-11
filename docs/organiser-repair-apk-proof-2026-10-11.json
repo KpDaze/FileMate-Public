@@ -1,0 +1,25 @@
+{
+  "filename": "FileMate-0.4.1-Organiser-Repair.apk",
+  "package": "app.filemate",
+  "versionCode": 7,
+  "versionName": "0.4.1-organiser-repair",
+  "sha256": "d4841ca38eac9de8d37d590fa69f778e7970464738965d3f9d1ff20733163a9b",
+  "sizeBytes": 10050352,
+  "certificateSha256": "538093df7ff5c1e9658785da5530307e3db4d01daa921b3fcbc1e3e7a1bb798b",
+  "signerCount": 1,
+  "signatureSchemes": {
+    "v1": false,
+    "v2": false,
+    "v3": true,
+    "v3.1": false,
+    "v4": false,
+    "sourceStamp": false
+  },
+  "alignment": "zipalign -c -P16 4 passed",
+  "sourceCommit": "9cbec405658bb098477fe73d88d395ce67225574",
+  "githubSourceCommit": "7b2f335d6017cb40e93fc2f77fc3fcdc221f7ff2",
+  "sourceTree": "7d469b3997c4ea524ff0c51f0fe14584c3bc296c",
+  "build": "local Gradle8.13 testDebugUnitTest lintDebug assembleDebug; no GitHub run",
+  "independentlyVerified": true,
+  "phoneTested": false
+}
